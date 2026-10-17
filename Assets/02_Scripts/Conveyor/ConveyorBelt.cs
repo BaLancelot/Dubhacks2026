@@ -53,11 +53,13 @@ namespace SushiDojo.Conveyor
         [SerializeField] int seed;
 
         public event Action<IngredientData> OnCenterRevealed;
-        public event Action<IngredientData> OnCenterTaken;
+        /// <summary>(playerId, ingredient) — fired when a player takes the center ingredient.</summary>
+        public event Action<int, IngredientData> OnCenterTaken;
 
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
         public bool IsRunning { get; private set; }
-        public bool CanTakeCenter => state == State.Holding && CenterItem != null && CenterItem.IsRevealed;
+        public bool CanTakeCenter =>
+            state == State.Holding && CenterItem != null && CenterItem.IsRevealed && !CenterItem.IsTaken;
 
         // Lane layout: [exit] [visible slots ...] [entry]
         int LaneLength => VisibleSlotCount + 2;
@@ -115,17 +117,17 @@ namespace SushiDojo.Conveyor
             if (state == State.Holding) state = State.Idle;
         }
 
-        public bool TryTakeCenter(out IngredientData data)
+        /// <summary>First caller during the hold wins. Only the ingredient is removed; plate and lid stay.</summary>
+        public bool TryTakeCenter(int playerId, out IngredientData data)
         {
             data = null;
             if (!CanTakeCenter) return false;
 
             BeltItem item = CenterItem;
             data = item.Data;
-            lane[CenterIndex] = null;
-            Destroy(item.gameObject);
+            item.TakeIngredient();
 
-            OnCenterTaken?.Invoke(data);
+            OnCenterTaken?.Invoke(playerId, data);
             return true;
         }
 

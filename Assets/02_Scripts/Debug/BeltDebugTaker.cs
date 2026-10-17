@@ -10,6 +10,7 @@ namespace SushiDojo.DebugTools
     {
         [SerializeField] ConveyorBelt belt;
         [SerializeField] Key takeKey = Key.Space;
+        [SerializeField] int playerId;
         [SerializeField] bool logReveals = true;
 
         void OnEnable()
@@ -32,7 +33,7 @@ namespace SushiDojo.DebugTools
             if (keyboard == null || belt == null) return;
             if (!keyboard[takeKey].wasPressedThisFrame) return;
 
-            if (!belt.TryTakeCenter(out _))
+            if (!belt.TryTakeCenter(playerId, out _))
                 Debug.Log("[BeltDebug] Nothing to take.");
         }
 
@@ -41,9 +42,9 @@ namespace SushiDojo.DebugTools
             if (logReveals) Debug.Log($"[BeltDebug] Revealed: {data.DisplayName}");
         }
 
-        void HandleTaken(IngredientData data)
+        void HandleTaken(int takerId, IngredientData data)
         {
-            Debug.Log($"[BeltDebug] Took: {data.DisplayName}");
+            Debug.Log($"[BeltDebug] Player {takerId} took: {data.DisplayName}");
         }
     }
 }

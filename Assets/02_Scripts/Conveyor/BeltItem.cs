@@ -38,6 +38,7 @@ namespace SushiDojo.Conveyor
 
         public IngredientData Data { get; private set; }
         public bool IsRevealed { get; private set; }
+        public bool IsTaken { get; private set; }
 
         Vector3 ingredientBaseScale = Vector3.one;
         Vector3 lidRestPosition;
@@ -60,7 +61,8 @@ namespace SushiDojo.Conveyor
             float popProgress = Progress(revealTimer, revealPopDuration);
             float lidProgress = Progress(revealTimer, lidOpenDuration);
 
-            ingredientRenderer.transform.localScale = ingredientBaseScale * revealPopCurve.Evaluate(popProgress);
+            if (!IsTaken)
+                ingredientRenderer.transform.localScale = ingredientBaseScale * revealPopCurve.Evaluate(popProgress);
             ApplyLidPose(lidOpenCurve.Evaluate(lidProgress));
 
             if (popProgress >= 1f && lidProgress >= 1f) FinishRevealAnimation();
@@ -69,6 +71,7 @@ namespace SushiDojo.Conveyor
         public void Init(IngredientData data)
         {
             Data = data;
+            IsTaken = false;
             ingredientRenderer.sprite = data.Sprite;
             FitIngredientToSize();
             Cover();
@@ -92,6 +95,14 @@ namespace SushiDojo.Conveyor
             isAnimatingReveal = true;
             ApplyLidPose(0f);
             if (revealSparkle != null) revealSparkle.Play();
+        }
+
+        /// <summary>Removes only the ingredient. Plate and lid stay on the belt.</summary>
+        public void TakeIngredient()
+        {
+            IsTaken = true;
+            ingredientRenderer.enabled = false;
+            ingredientRenderer.transform.localScale = ingredientBaseScale;
         }
 
         /// <summary>Keeps the plate and ingredient visible but removes the open lid.</summary>
