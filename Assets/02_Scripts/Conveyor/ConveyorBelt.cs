@@ -56,6 +56,64 @@ namespace SushiDojo.Conveyor
         public event Action<IngredientData> OnCenterTaken;
 
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
+
+        public IngredientData GetIngredientAtSlot(int index)
+        {
+            if (lane == null || index < 0 || index >= lane.Length)
+                return null;
+
+            return lane[index] != null ? lane[index].Data : null;
+        }
+
+
+        public int GetIngredientIndexAtSlot(int slot)
+        {
+            IngredientData data = GetIngredientAtSlot(slot);
+            return data == null ? -1 : ingredients.IndexOf(data);
+        }
+
+        public void ApplyRemoteSlots(IReadOnlyList<int> slots)
+        {
+            if (lane == null || slots.Count != lane.Length)
+                return;
+
+            // Remove the previous local visual items.
+            for (int i = 0; i < lane.Length; i++)
+            {
+                if (lane[i] != null)
+                {
+                    Destroy(lane[i].gameObject);
+                    lane[i] = null;
+                }
+            }
+
+            // Rebuild the visible items using the host's data.
+            for (int i = 0; i < slots.Count; i++)
+            {
+                int ingredientIndex = slots[i];
+
+                if (ingredientIndex < 0 ||
+                    ingredientIndex >= ingredients.Count)
+                    continue;
+
+                IngredientData data = ingredients[ingredientIndex];
+                if (data == null)
+                    continue;
+
+                BeltItem item = Instantiate(itemPrefab, ItemRoot);
+                item.transform.localPosition = SlotPosition(i);
+                item.Init(data);
+
+                lane[i] = item;
+
+                if (i == CenterIndex)
+                    item.Reveal();
+                else if (i < CenterIndex && keepRevealedAfterCenter)
+                    item.Reveal();
+            }
+        }
+
+
         public bool IsRunning { get; private set; }
         public bool CanTakeCenter => state == State.Holding && CenterItem != null && CenterItem.IsRevealed;
 
