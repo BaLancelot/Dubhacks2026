@@ -58,7 +58,7 @@ namespace SushiDojo.Conveyor
 
         public event Action<IngredientData> OnCenterRevealed;
         public event Action<IngredientData> OnCenterTaken;
-
+        public event Action OnCenterClicked;
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
         public bool IsRunning { get; private set; }
         public bool CanTakeCenter =>
@@ -150,6 +150,21 @@ namespace SushiDojo.Conveyor
                 state = State.Idle;
         }
 
+        void OnBeltItemClicked(BeltItem item)
+        {
+            Debug.Log("Conveyor received ingredient click!");
+
+            if (lane == null ||
+                item != CenterItem ||
+                !item.IsRevealed)
+            {
+                Debug.Log("Click rejected: Not the revealed center ingredient.");
+                return;
+            }
+
+            Debug.Log("Valid center click! Requesting claim.");
+            OnCenterClicked?.Invoke();
+        }
         public bool TryTakeCenter(out IngredientData data)
         {
             data = null;
@@ -255,7 +270,7 @@ namespace SushiDojo.Conveyor
                 {
                     item = Instantiate(itemPrefab, ItemRoot);
                     item.transform.localPosition = SlotPosition(i);
-                    item.Init(data);
+                    item.Init(data, OnBeltItemClicked);
                 }
 
                 updated[i] = item;
@@ -467,7 +482,7 @@ namespace SushiDojo.Conveyor
 
             BeltItem item = Instantiate(itemPrefab, ItemRoot);
             item.transform.localPosition = SlotPosition(laneIndex);
-            item.Init(data);
+            item.Init(data, OnBeltItemClicked);
 
             lane[laneIndex] = item;
         }

@@ -1,6 +1,7 @@
 using SushiDojo.Effects;
 using SushiDojo.Ingredients;
 using UnityEngine;
+using System;
 
 namespace SushiDojo.Conveyor
 {
@@ -38,7 +39,7 @@ namespace SushiDojo.Conveyor
 
         public IngredientData Data { get; private set; }
         public bool IsRevealed { get; private set; }
-
+        private Action<BeltItem> onClicked;
         Vector3 ingredientBaseScale = Vector3.one;
         Vector3 lidRestPosition;
         Quaternion lidRestRotation;
@@ -66,14 +67,26 @@ namespace SushiDojo.Conveyor
             if (popProgress >= 1f && lidProgress >= 1f) FinishRevealAnimation();
         }
 
-        public void Init(IngredientData data)
+        public void Init(IngredientData data, Action<BeltItem> clickHandler = null)
         {
+            onClicked = clickHandler;
             Data = data;
             ingredientRenderer.sprite = data.Sprite;
             FitIngredientToSize();
             Cover();
         }
 
+        void OnMouseDown()
+        {
+            Debug.Log($"BeltItem clicked! Revealed: {IsRevealed}");
+
+            if (IsRevealed)
+            {
+                Debug.Log("Sending ingredient click to conveyor!");
+                onClicked?.Invoke(this);
+            }
+        }
+    
         public void Cover()
         {
             IsRevealed = false;

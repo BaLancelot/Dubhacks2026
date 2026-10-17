@@ -20,6 +20,7 @@ public class NetworkConveyor : NetworkBehaviour
             Debug.LogError("Conveyor reference is missing!");
             return;
         }
+        conveyor.OnCenterClicked += RequestTakeIngredient;
 
         if (IsServer)
         {
@@ -44,6 +45,11 @@ public class NetworkConveyor : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         slots.OnListChanged -= OnSlotsChanged;
+
+        if (conveyor != null)
+        {
+            conveyor.OnCenterClicked -= RequestTakeIngredient;
+        }
     }
 
     private void OnSlotsChanged(NetworkListEvent<int> change)
