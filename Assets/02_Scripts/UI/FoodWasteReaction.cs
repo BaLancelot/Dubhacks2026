@@ -43,6 +43,9 @@ namespace SushiDojo.UI
         {
             if (myScore != null) myScore.PlayPenalty();
 
+            NetworkMatchTimer timer = FindFirstObjectByType<NetworkMatchTimer>();
+            if (timer != null && (timer.IsMatchSettling || timer.HasMatchEnded)) return;
+
             if (hasShownMessage || opponentBubble == null) return;
             hasShownMessage = true;
             opponentBubble.ShowMessage(firstWasteMessage, messageDuration);
