@@ -12,6 +12,7 @@ namespace SushiDojo.UI
         [Tooltip("Optional. Scores now show in the speech bubbles.")]
         [SerializeField] TMP_Text opponentScore;
         [SerializeField] TMP_Text timerText;
+        [Tooltip("Optional.")]
         [SerializeField] TMP_Text statusText;
         [SerializeField] GameObject resultsPanel;
         [SerializeField] TMP_Text resultTitle;
@@ -52,8 +53,9 @@ namespace SushiDojo.UI
                 opponentScore.text = scoresReady ? $"OPPONENT  {scoreboard.DisplayedOpponentScore}" : "OPPONENT  0";
             int seconds = timer != null ? Mathf.CeilToInt(timer.TimeRemaining) : 180;
             timerText.text = $"{seconds / 60:00}:{seconds % 60:00}";
-            statusText.text = multiplayer == null ? "Open MainMenu to host or join" :
-                (running && connected && !multiplayer.IsBusy ? "" : multiplayer.Status);
+            if (statusText != null)
+                statusText.text = multiplayer == null ? "Open MainMenu to host or join" :
+                    (running && connected && !multiplayer.IsBusy ? "" : multiplayer.Status);
             bool disconnected = multiplayer != null && multiplayer.ConnectionLost;
             resultsPanel.SetActive(ended || disconnected);
             menuButton.gameObject.SetActive(!running && !ended && !disconnected);

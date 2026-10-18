@@ -12,7 +12,8 @@ namespace SushiDojo.UI
     public static class BubbleGeometry
     {
         const float MinTailLength = 0.0001f;
-        const float MiterLimit = 2f;
+        // How far a corner may stretch the stroke; high enough that the tail tip stays covered.
+        const float MiterLimit = 4f;
         const float PressureSeedOffset = 31.7f;
         const float WobbleSeedOffset = 71.3f;
         const float BoilSeedStep = 13.37f;
@@ -133,7 +134,10 @@ namespace SushiDojo.UI
             return (seed + boilStep) * BoilSeedStep;
         }
 
-        /// <summary>Fan-triangulated fill: the body around its center, the tail around the middle of its base.</summary>
+        /// <summary>
+        /// Body: a fan around its center. Tail: a strip between its two sides (A..tip and B..tip),
+        /// so a bent (concave) tail never fills outside its outline.
+        /// </summary>
         public static void BuildFill(List<Vector2> outline, int tailStart, int tailEnd, Rect uvRect, Color color,
             List<Vector3> vertices, List<Color> colors, List<Vector2> uvs, List<int> triangles)
         {
@@ -148,14 +152,28 @@ namespace SushiDojo.UI
 
             if (tailStart < 0) return;
 
-            Vector2 baseMiddle = (outline[tailStart] + outline[0]) * 0.5f;
-            int tailCenter = AddFillVertex(baseMiddle, bounds, uvRect, color, vertices, colors, uvs);
-            int tailFirst = vertices.Count;
-            for (int i = tailStart; i <= tailEnd; i++) AddFillVertex(outline[i], bounds, uvRect, color, vertices, colors, uvs);
-            AddFillVertex(outline[0], bounds, uvRect, color, vertices, colors, uvs); // B closes the tail
-            int tailCount = vertices.Count - tailFirst;
-            for (int i = 0; i < tailCount - 1; i++) AddTriangle(triangles, tailCenter, tailFirst + i, tailFirst + i + 1);
+            // Outline after A: side one (A -> tip, ends on the tip), then side two (tip -> B, without the tip or B).
+            int sidePoints = (tailEnd - tailStart + 1) / 2;
+            int tipIndex = tailStart + sidePoints;
+            for (int k = 0; k < sidePoints; k++)
+            {
+                Vector2 leftNow = outline[tailStart + k];
+                Vector2 leftNext = outline[tailStart + k + 1];
+                Vector2 rightNow = SideTwoPoint(outline, k, tailEnd);
+                Vector2 rightNext = k + 1 == sidePoints ? outline[tipIndex] : SideTwoPoint(outline, k + 1, tailEnd);
+
+                int a = AddFillVertex(leftNow, bounds, uvRect, color, vertices, colors, uvs);
+                int b = AddFillVertex(leftNext, bounds, uvRect, color, vertices, colors, uvs);
+                int c = AddFillVertex(rightNow, bounds, uvRect, color, vertices, colors, uvs);
+                int d = AddFillVertex(rightNext, bounds, uvRect, color, vertices, colors, uvs);
+                AddTriangle(triangles, a, b, d);
+                AddTriangle(triangles, a, d, c);
+            }
         }
+
+        /// <summary>k steps from B along the tail's second side (k = 0 is B).</summary>
+        static Vector2 SideTwoPoint(List<Vector2> outline, int k, int tailEnd) =>
+            k == 0 ? outline[0] : outline[tailEnd - k + 1];
 
         /// <summary>Closed stroke along the outline whose width varies like pen pressure.</summary>
         public static void BuildStroke(List<Vector2> outline, float width, float pressureVariation, float pressureFrequency,

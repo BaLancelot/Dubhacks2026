@@ -19,10 +19,14 @@ namespace SushiDojo.UI
 
         UISpeechBubble bubble;
 
-        protected UISpeechBubbleOutline()
+#if UNITY_EDITOR
+        // The outline shouldn't block clicks; off by default when the component is added.
+        protected override void Reset()
         {
+            base.Reset();
             raycastTarget = false;
         }
+#endif
 
         protected override void OnEnable()
         {
@@ -30,10 +34,14 @@ namespace SushiDojo.UI
             bubble = GetComponentInParent<UISpeechBubble>();
         }
 
-        void LateUpdate()
+        void Update()
         {
             if (bubble == null) bubble = GetComponentInParent<UISpeechBubble>();
-            if (bubble != null) MatchParent();
+            if (bubble == null) return;
+
+            MatchParent();
+            // Children rebuild after their parent, so this picks up the bubble's fresh outline.
+            SetVerticesDirty();
         }
 
         protected override void OnPopulateMesh(VertexHelper vh)
