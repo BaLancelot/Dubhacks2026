@@ -19,6 +19,14 @@ namespace SushiDojo.UI
 
         TMP_Text text;
 
+        public void Configure(float left, float right, float slopeAmount)
+        {
+            leftScale = left;
+            rightScale = right;
+            slope = slopeAmount;
+            if (text != null) text.SetVerticesDirty();
+        }
+
         void OnEnable()
         {
             text = GetComponent<TMP_Text>();

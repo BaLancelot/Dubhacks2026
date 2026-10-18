@@ -1,4 +1,5 @@
 using System.Collections;
+using SushiDojo.Menu;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -47,6 +48,46 @@ namespace SushiDojo.UI
         float backdropAlpha = -1f;
         Image[] stars;
 
+        /// <summary>
+        /// Points the animation at a screen built in code (e.g. the options panel). No star burst.
+        /// Subtle = smaller overshoot and quicker timing.
+        /// </summary>
+        public void Setup(Image backdropImage, RectTransform panelRect, RectTransform[] titleParts,
+            RectTransform[] buttonParts, RectTransform[] contents, bool subtle)
+        {
+            backdrop = backdropImage;
+            panel = panelRect;
+            title = titleParts;
+            buttons = buttonParts;
+            panelContents = contents;
+            starSprite = null;
+            if (subtle)
+            {
+                backdropFade = 0.2f;
+                panelOpen = 0.3f;
+                popDuration = 0.28f;
+                popStagger = 0.08f;
+                panelOpenCurve = SwingCurve(1.02f);
+                popCurve = PopCurve(1.06f);
+            }
+
+            // Added with AddComponent, OnEnable already ran before these parts were known: start over now.
+            if (isActiveAndEnabled)
+            {
+                if (backdropAlpha < 0f && backdrop != null) backdropAlpha = backdrop.color.a;
+                StopAllCoroutines();
+                StartCoroutine(Play());
+            }
+        }
+
+        static AnimationCurve SwingCurve(float overshoot) => new(
+            new Keyframe(0f, 0f), new Keyframe(0.65f, overshoot),
+            new Keyframe(0.85f, 1f - (overshoot - 1f) * 0.4f), new Keyframe(1f, 1f));
+
+        static AnimationCurve PopCurve(float overshoot) => new(
+            new Keyframe(0f, 0f), new Keyframe(0.45f, overshoot), new Keyframe(0.7f, 1f - (overshoot - 1f) * 0.4f),
+            new Keyframe(0.87f, 1f + (overshoot - 1f) * 0.16f), new Keyframe(1f, 1f));
+
         void OnEnable()
         {
             if (backdropAlpha < 0f && backdrop != null) backdropAlpha = backdrop.color.a;
@@ -62,6 +103,8 @@ namespace SushiDojo.UI
             SetScale(title, 1f);
             SetScale(buttons, 1f);
             SetScale(panelContents, 1f);
+            SetHoverScaling(title, true);
+            SetHoverScaling(buttons, true);
             if (stars != null) foreach (Image star in stars) if (star != null) star.enabled = false;
         }
 
@@ -72,6 +115,9 @@ namespace SushiDojo.UI
             SetScale(panelContents, 0f);
             SetScale(title, 0f);
             SetScale(buttons, 0f);
+            // MenuButton's hover grow sets the scale every frame; pause it until each part has popped in.
+            SetHoverScaling(title, false);
+            SetHoverScaling(buttons, false);
 
             yield return Animate(backdropFade, t => SetBackdrop(t));
 
@@ -95,6 +141,14 @@ namespace SushiDojo.UI
         IEnumerator Pop(RectTransform[] targets)
         {
             yield return Animate(popDuration, t => SetScale(targets, popCurve.Evaluate(t)));
+            SetHoverScaling(targets, true);
+        }
+
+        static void SetHoverScaling(RectTransform[] targets, bool on)
+        {
+            if (targets == null) return;
+            foreach (RectTransform target in targets)
+                if (target != null && target.TryGetComponent(out MenuButton hover)) hover.enabled = on;
         }
 
         IEnumerator StarBurst(RectTransform origin)

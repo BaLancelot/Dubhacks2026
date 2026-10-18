@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using SushiDojo.Effects;
 using SushiDojo.Sound;
+using SushiDojo.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -131,6 +132,8 @@ namespace SushiDojo.Menu
         [Header("Host / Join")]
         [SerializeField] MenuJoinPanel joinPanel;
         [SerializeField] MenuLobbyPanel lobbyPanel;
+        [Tooltip("Options screen in the scene (Tools > Menu > Create Options Panel). Empty = built at runtime.")]
+        [SerializeField] MenuOptionsPanel optionsPanel;
         [SerializeField] float panelSlideDistance = 900f;
         [SerializeField, Min(0.01f)] float panelSlideDuration = 0.35f;
         [Tooltip("0 = off screen, 1 = in place. Values above 1 overshoot.")]
@@ -163,7 +166,6 @@ namespace SushiDojo.Menu
         SpotlightBeam beam;
         Vector2 buttonPanelRest;
         RectTransform currentScreen;
-        MenuOptionsPanel optionsPanel;
         bool switching;
         float titleTimer = -1f;
         bool showTitlesOnClose;
@@ -202,6 +204,7 @@ namespace SushiDojo.Menu
             currentScreen = buttonPanel;
             HidePanel(joinPanel);
             HidePanel(lobbyPanel);
+            HidePanel(optionsPanel);
 
             // Before Darken() changes them.
             if (titleLeft != null) titleLeftColor = titleLeft.color;
@@ -226,6 +229,7 @@ namespace SushiDojo.Menu
                 lobbyPanel.StartPressed += HandleStartPressed;
                 lobbyPanel.BackPressed += BackToMenu;
             }
+            if (optionsPanel != null) optionsPanel.BackPressed += BackToMenu;
         }
 
         void OnDisable()
@@ -242,6 +246,7 @@ namespace SushiDojo.Menu
                 lobbyPanel.StartPressed -= HandleStartPressed;
                 lobbyPanel.BackPressed -= BackToMenu;
             }
+            if (optionsPanel != null) optionsPanel.BackPressed -= BackToMenu;
         }
 
         IEnumerator Start()
@@ -346,7 +351,10 @@ namespace SushiDojo.Menu
         {
             if (switching || leaving || currentScreen != buttonPanel) return;
             if (optionsPanel == null)
-                optionsPanel = MenuOptionsPanel.Create(buttonPanel.parent, BackToMenu);
+            {
+                optionsPanel = MenuOptionsPanel.Create(buttonPanel.parent);
+                optionsPanel.BackPressed += BackToMenu;
+            }
             SwitchTo((RectTransform)optionsPanel.transform);
         }
 
@@ -608,19 +616,25 @@ namespace SushiDojo.Menu
 
             if (from == buttonPanel) SetButtonsInteractable(false);
             SetPanelInteractable(from, false);
+            // Screens with their own opening animation (e.g. options: gates open) appear in place instead of sliding.
+            to.anchoredPosition = toRest;
             to.gameObject.SetActive(true);
+            bool toOpensItself = to.GetComponent<ResultsPresentation>() != null;
             SetPanelInteractable(to, false);
-            SetScreenAlpha(to, 0f);
+            SetScreenAlpha(to, toOpensItself ? 1f : 0f);
 
             for (float t = 0f; t < panelSlideDuration; t += Time.deltaTime)
             {
                 float progress = t / panelSlideDuration;
                 float eased = panelSlideCurve.Evaluate(progress);
                 from.anchoredPosition = fromRest + Vector2.right * (exitDirection * panelSlideDistance * Mathf.Clamp01(eased));
-                to.anchoredPosition = toRest + Vector2.right * (-exitDirection * panelSlideDistance * (1f - eased));
                 // The leaving screen fades out as it slides away; the arriving one fades in.
                 SetScreenAlpha(from, 1f - progress);
-                SetScreenAlpha(to, progress);
+                if (!toOpensItself)
+                {
+                    to.anchoredPosition = toRest + Vector2.right * (-exitDirection * panelSlideDistance * (1f - eased));
+                    SetScreenAlpha(to, progress);
+                }
                 yield return null;
             }
 
