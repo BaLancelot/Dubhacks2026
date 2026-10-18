@@ -25,12 +25,21 @@ namespace SushiDojo.Menu
         /// <summary>Debug only: fired by the debug key to fake a successful join.</summary>
         public event Action DebugJoinSucceeded;
 
+        public bool AllowDebugInput { get; set; } = true;
         bool waiting;
 
         void Awake()
         {
+            codeInput.onValidateInput = ValidateCodeCharacter;
             connectButton.onClick.AddListener(Submit);
             backButton.onClick.AddListener(() => BackPressed?.Invoke());
+        }
+
+        static char ValidateCodeCharacter(string text, int index, char character)
+        {
+            char upper = char.ToUpperInvariant(character);
+            return (upper >= 'A' && upper <= 'Z') || (upper >= '0' && upper <= '9')
+                ? upper : '\0';
         }
 
         /// <summary>Resets the screen and puts the cursor in the code field.</summary>
@@ -64,7 +73,7 @@ namespace SushiDojo.Menu
             if (!waiting && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)) Submit();
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (keyboard[debugJoinSuccessKey].wasPressedThisFrame && !codeInput.isFocused) DebugJoinSucceeded?.Invoke();
+            if (AllowDebugInput && keyboard[debugJoinSuccessKey].wasPressedThisFrame && !codeInput.isFocused) DebugJoinSucceeded?.Invoke();
 #endif
         }
 

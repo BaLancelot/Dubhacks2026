@@ -34,7 +34,21 @@ namespace SushiDojo.Menu
         public bool IsHost { get; private set; }
         public bool OpponentJoined { get; private set; }
 
+        public bool AllowDebugInput { get; set; } = true;
+        bool networkBusy;
+        string networkStatus;
         int openedFrame;
+        int roomCodeSetFrame = -1;
+        bool hasRoomCode;
+
+        public void SetNetworkState(string message, bool busy)
+        {
+            networkStatus = message;
+            networkBusy = busy;
+            waitingText.enabled = busy || !OpponentJoined || !IsHost;
+            startButton.interactable = IsHost && OpponentJoined && !busy;
+        }
+
 
         void Awake()
         {
@@ -47,25 +61,37 @@ namespace SushiDojo.Menu
         {
             IsHost = isHost;
             openedFrame = Time.frameCount;
+            networkBusy = true;
+            networkStatus = isHost ? "Creating room..." : "Connecting to host...";
+            waitingText.text = networkStatus;
             SetRoomCode("");
             SetOpponentJoined(false);
         }
 
         public void SetRoomCode(string code)
         {
-            roomCodeText.text = string.IsNullOrEmpty(code) ? "" : $"ROOM  {code}";
+            string displayedCode = string.IsNullOrEmpty(code) ? "" : code;
+            if (roomCodeText.text != displayedCode)
+            {
+                roomCodeText.text = displayedCode;
+                roomCodeSetFrame = Time.frameCount;
+            }
+            hasRoomCode = displayedCode.Length > 0;
+            roomCodeText.enabled = hasRoomCode && !OpponentJoined;
+            if (!hasRoomCode) roomCodeSetFrame = -1;
         }
 
         /// <summary>The other player joined (true) or left (false).</summary>
         public void SetOpponentJoined(bool joined)
         {
             OpponentJoined = joined;
+            roomCodeText.enabled = hasRoomCode && !joined;
             waitingText.enabled = !joined;
             if (joined) opponentPreview.Show();
             else opponentPreview.Hide();
 
             startButton.gameObject.SetActive(IsHost);
-            startButton.interactable = joined;
+            startButton.interactable = joined && !networkBusy;
         }
 
         void Update()
@@ -73,13 +99,18 @@ namespace SushiDojo.Menu
             if (waitingText.enabled)
             {
                 int dots = Mathf.FloorToInt(Time.time / dotInterval) % 4;
-                waitingText.text = (IsHost ? hostWaitingMessage : guestWaitingMessage) + new string('.', dots);
+                // Give the room-code text a rendered frame before announcing that the room is ready.
+                bool codeDisplayed = hasRoomCode && Time.frameCount > roomCodeSetFrame;
+                string message = !string.IsNullOrEmpty(networkStatus) && networkBusy
+                    ? networkStatus : IsHost && !codeDisplayed
+                        ? "Creating room" : IsHost ? hostWaitingMessage : guestWaitingMessage;
+                waitingText.text = message.TrimEnd('.') + new string('.', dots);
             }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Keyboard keyboard = Keyboard.current;
             // Skip the opening frame so the key that opened the lobby doesn't also toggle it.
-            if (keyboard != null && Time.frameCount != openedFrame && keyboard[debugToggleOpponentKey].wasPressedThisFrame)
+            if (AllowDebugInput && keyboard != null && Time.frameCount != openedFrame && keyboard[debugToggleOpponentKey].wasPressedThisFrame)
                 SetOpponentJoined(!OpponentJoined);
 #endif
         }

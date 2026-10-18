@@ -123,6 +123,8 @@ public class NetworkConveyor : NetworkBehaviour
         slotsChanged = true;
     }
 
+    public void StopLocalPresentation() => StopConveyorForMatch();
+
     private void StopConveyorForMatch()
 {
     if (conveyor != null)
@@ -168,6 +170,7 @@ public class NetworkConveyor : NetworkBehaviour
     // Called when the local player clicks the revealed ingredient.
     public void RequestTakeIngredient()
     {
+        if (SushiMultiplayer.Instance != null && SushiMultiplayer.Instance.ConnectionLost) return;
         if (matchTimer != null && !matchTimer.IsMatchRunning)
             return;
         if (!IsSpawned || !IsClient)
@@ -187,6 +190,11 @@ public class NetworkConveyor : NetworkBehaviour
 private void TakeIngredientRpc(RpcParams rpcParams = default)
 {
     ulong playerId = rpcParams.Receive.SenderClientId;
+    if (SushiMultiplayer.Instance != null && SushiMultiplayer.Instance.ConnectionLost)
+    {
+        RejectClaimRpc(RpcTarget.Single(playerId, RpcTargetUse.Temp));
+        return;
+    }
     if ((matchTimer != null && !matchTimer.IsMatchRunning) || conveyor == null)
     {
         RejectClaimRpc(RpcTarget.Single(playerId, RpcTargetUse.Temp));

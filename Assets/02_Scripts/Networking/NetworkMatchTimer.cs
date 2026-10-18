@@ -180,66 +180,15 @@ public class NetworkMatchTimer : NetworkBehaviour
         }
     }
 
-    private void OnGUI()
+    public int ReplayVoteCount => replayVotes.Value;
+    public bool LocalReplayRequested => localReplayRequested;
+
+    public void RequestPlayAgain()
     {
-        if (!IsSpawned)
-            return;
-
-        GUILayout.BeginArea(
-            new Rect(Screen.width / 2f - 110, 15, 220, 230)
-        );
-
-        if (!matchStarted.Value)
-        {
-            GUILayout.Label("Waiting for match...");
-
-            if (IsServer &&
-                GUILayout.Button("Start Match"))
-            {
-                StartMatch();
-            }
-        }
-        else if (HasMatchEnded)
-        {
-            GUILayout.Label("TIME'S UP!");
-
-            if (winner.Value == 1)
-                GUILayout.Label("PLAYER 1 WINS!");
-            else if (winner.Value == 2)
-                GUILayout.Label("PLAYER 2 WINS!");
-            else if (winner.Value == 0)
-                GUILayout.Label("IT'S A TIE!");
-
-            if (scoreboard != null)
-            {
-                GUILayout.Label(
-                    $"Final Score: {scoreboard.HostScore.Value} - " +
-                    $"{scoreboard.ClientScore.Value}"
-                );
-            }
-
-            GUILayout.Label($"Play again: {replayVotes.Value}/2 players");
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = previousEnabled && IsClient && !localReplayRequested;
-            if (GUILayout.Button(localReplayRequested ? "Waiting for other player..." : "Play Again"))
-            {
-                localReplayRequested = true;
-                VotePlayAgainRpc();
-            }
-            GUI.enabled = previousEnabled;
-        }
-        else
-        {
-            int seconds = Mathf.CeilToInt(TimeRemaining);
-
-            int minutes = seconds / 60;
-            int remainingSeconds = seconds % 60;
-
-            GUILayout.Label(
-                $"Time: {minutes:00}:{remainingSeconds:00}"
-            );
-        }
-
-        GUILayout.EndArea();
+        if (!IsSpawned || !IsClient || !HasMatchEnded || localReplayRequested) return;
+        if (SushiMultiplayer.Instance == null || !SushiMultiplayer.Instance.HasOpponent ||
+            SushiMultiplayer.Instance.ConnectionLost) return;
+        localReplayRequested = true;
+        VotePlayAgainRpc();
     }
 }

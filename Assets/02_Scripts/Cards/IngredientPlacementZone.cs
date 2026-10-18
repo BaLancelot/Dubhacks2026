@@ -49,6 +49,12 @@ namespace SushiDojo.Cards
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
             if (!AcceptingIngredients) return false;
+            if (SushiMultiplayer.Instance != null)
+            {
+                NetworkMatchTimer timer = FindFirstObjectByType<NetworkMatchTimer>();
+                if (timer == null || !timer.IsMatchRunning || SushiMultiplayer.Instance.ConnectionLost)
+                    return false;
+            }
 
             if (ingredientPrefab == null)
             {

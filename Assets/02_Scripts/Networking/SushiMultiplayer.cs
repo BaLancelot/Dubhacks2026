@@ -1,349 +1,322 @@
-
 using System;
 using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.SceneManagement;
+using SushiDojo.Menu;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using Unity.Services.Core;
 using Unity.Services.Authentication;
+using Unity.Services.Core;
 using Unity.Services.Multiplayer;
+using Unity.Services.Lobbies;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
+// Runs before NetworkManager so a scene's duplicate cannot become another persistent manager.
+[DefaultExecutionOrder(-2000)]
 public class SushiMultiplayer : MonoBehaviour
 {
-    [SerializeField] private NetworkConveyor networkConveyor;
-    [SerializeField] private NetworkMatchTimer matchTimer;
+    public static SushiMultiplayer Instance { get; private set; }
+    [SerializeField] string gameplaySceneName = "SampleScene";
+    [SerializeField] string menuSceneName = "MainMenu";
+    [SerializeField] NetworkConveyor networkConveyor;
+    [SerializeField] NetworkMatchTimer matchTimer;
+    NetworkManager manager;
+    MainMenu menu;
+    ISession session;
+    Task initialization;
+    bool operationInProgress;
+    bool returningToMenu;
+    bool loadingMatch;
+    bool guestLobbyOpened;
+    bool subscribed;
+    NetworkSceneManager loadingSceneManager;
+    string status = "Connecting to services...";
 
-    private ISession session;
-    private string joinCode = "";
-    private string status = "Not connected";
-    private bool servicesReady;
-    private bool operationInProgress;
-    private NetworkManager observedManager;
-    private string gameplayScenePath;
-    private bool returningToLobby;
-    private bool rematchLoading;
-    private NetworkSceneManager rematchSceneManager;
+    public string Status => status;
+    public string RoomCode => session?.Code ?? "";
+    public bool IsBusy => operationInProgress || returningToMenu;
+    public bool ConnectionLost { get; private set; }
+    public bool HasOpponent { get; private set; }
 
     void Awake()
     {
-        // Give both local player instances a bounded rendering budget.
-        // Uncapped Game views compete for the same CPU/GPU in Multiplayer Play Mode.
-        Application.targetFrameRate = 60;
-        Application.runInBackground = true;
-    }
-
-    private bool CanConnect => servicesReady && !operationInProgress && session == null &&
-        (NetworkManager.Singleton == null ||
-         (!NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress));
-
-    private void ConfigureTransport()
-    {
-        Application.runInBackground = true;
-        NetworkManager manager = NetworkManager.Singleton;
-        if (manager == null || manager.IsListening) return;
-        if (manager.NetworkConfig.NetworkTransport is UnityTransport transport)
+        if (Instance != null && Instance != this)
         {
-            // Virtual-player windows can process accumulated packets in bursts.
-            // The default 128-packet queue overflowed before Relay disconnected.
-            transport.MaxPacketQueueSize = Math.Max(transport.MaxPacketQueueSize, 1024);
-        }
-    }
-
-    void Update()
-    {
-        // This manager survives the synchronized rematch scene load.
-        if (networkConveyor == null)
-            networkConveyor = FindFirstObjectByType<NetworkConveyor>();
-        if (matchTimer == null)
-            matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
-        if (observedManager == NetworkManager.Singleton) return;
-        UnsubscribeNetworkEvents();
-        observedManager = NetworkManager.Singleton;
-        if (observedManager == null) return;
-        observedManager.OnClientConnectedCallback += HandleConnected;
-        observedManager.OnClientDisconnectCallback += HandleDisconnected;
-    }
-
-    void OnDestroy()
-    {
-        UnsubscribeNetworkEvents();
-        if (rematchSceneManager != null)
-            rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
-    }
-
-    public void StartRematch()
-    {
-        NetworkManager manager = NetworkManager.Singleton;
-        if (manager == null || !manager.IsServer || rematchLoading || operationInProgress) return;
-        if (matchTimer == null || !matchTimer.HasMatchEnded) return;
-
-        rematchLoading = true;
-        operationInProgress = true;
-        status = "Both players ready. Loading next match...";
-        rematchSceneManager = manager.SceneManager;
-        rematchSceneManager.OnSceneEvent += HandleRematchSceneEvent;
-        SceneEventProgressStatus result = rematchSceneManager.LoadScene(gameplayScenePath, LoadSceneMode.Single);
-        if (result != SceneEventProgressStatus.Started)
-        {
-            rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
-            rematchLoading = false;
-            operationInProgress = false;
-            status = $"Could not load next match: {result}. Return to Lobby to retry.";
-            Debug.LogError(status);
-        }
-    }
-
-    private void HandleRematchSceneEvent(SceneEvent sceneEvent)
-    {
-        if (!rematchLoading || sceneEvent.SceneEventType != SceneEventType.LoadEventCompleted) return;
-        rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
-        rematchLoading = false;
-        operationInProgress = false;
-        networkConveyor = FindFirstObjectByType<NetworkConveyor>();
-        matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
-
-        if (sceneEvent.ClientsThatTimedOut.Count != 0 || sceneEvent.ClientsThatCompleted.Count != 2 ||
-            NetworkManager.Singleton.ConnectedClientsIds.Count != 2 || matchTimer == null)
-        {
-            status = "A player did not finish loading. Return to Lobby to retry.";
+            gameObject.SetActive(false);
+            Destroy(gameObject);
             return;
         }
-
-        matchTimer.StartMatch();
-        status = "Next match started!";
-    }
-
-    void UnsubscribeNetworkEvents()
-    {
-        if (observedManager == null) return;
-        observedManager.OnClientConnectedCallback -= HandleConnected;
-        observedManager.OnClientDisconnectCallback -= HandleDisconnected;
-    }
-
-    void HandleConnected(ulong clientId)
-    {
-        if (observedManager != null && clientId == observedManager.LocalClientId)
-            status = observedManager.IsHost ? "Hosting room!" : "Connected to host!";
-    }
-
-    void HandleDisconnected(ulong clientId)
-    {
-        if (returningToLobby) return;
-        if (observedManager == null || clientId != observedManager.LocalClientId) return;
-        status = "Network disconnected. Leave Room before retrying.";
-        Debug.LogWarning($"Network disconnected: {observedManager.DisconnectReason}");
+        Instance = this;
+        manager = GetComponent<NetworkManager>();
+        DontDestroyOnLoad(gameObject);
+        Application.targetFrameRate = 60;
+        Application.runInBackground = true;
+        SceneManager.sceneLoaded += SceneLoaded;
     }
 
     async void Start()
     {
-        gameplayScenePath = networkConveyor != null
-            ? networkConveyor.gameObject.scene.path
-            : SceneManager.GetActiveScene().path;
-        if (matchTimer == null)
-            matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+        if (Instance != this) return;
+        manager.OnClientConnectedCallback += Connected;
+        manager.OnClientDisconnectCallback += Disconnected;
+        subscribed = true;
+        initialization = InitializeServices();
+        BindMenu();
+        try { await initialization; } catch { /* The menu displays the initialization error; connect can retry. */ }
+    }
+
+    async Task InitializeServices()
+    {
         try
         {
             await UnityServices.InitializeAsync();
-
             if (!AuthenticationService.Instance.IsSignedIn)
-            {
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
-            }
-
-            servicesReady = true;
-            status = "Ready to host or join";
-            Debug.Log("Unity Services initialized!");
+            if (!operationInProgress) status = "Ready to host or join";
         }
         catch (Exception e)
         {
-            Debug.LogError($"Initialization failed: {e}");
-            status = "Initialization failed!";
+            status = "Could not connect to services. Please try again.";
+            Debug.LogException(e);
+            throw;
         }
     }
 
-    public async void HostGame()
+    void SceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (!CanConnect) return;
-        ConfigureTransport();
-        operationInProgress = true;
-        status = "Creating room...";
-        try
-        {
-            var options = new SessionOptions
-            {
-                MaxPlayers = 2
-            }.WithRelayNetwork();
-
-            session = await MultiplayerService.Instance.CreateSessionAsync(options);
-
-            status = "Hosting room!";
-
-            Debug.Log($"Room created! Join code: {session.Code}");
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Hosting failed: {e}");
-            status = "Failed to host room!";
-        }
-        finally { operationInProgress = false; }
+        networkConveyor = FindFirstObjectByType<NetworkConveyor>();
+        matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+        BindMenu();
     }
 
-    public async void JoinGame(string code)
+    void BindMenu()
     {
-        if (!CanConnect) return;
-        ConfigureTransport();
-        code = code?.Trim();
-        if (string.IsNullOrEmpty(code))
+        UnbindMenu();
+        menu = FindFirstObjectByType<MainMenu>();
+        if (menu == null) return;
+        menu.HostRequested += HostGame;
+        menu.JoinRequested += JoinGame;
+        menu.StartRequested += StartGame;
+        menu.LeftLobby += LeaveRoom;
+        menu.Lobby.AllowDebugInput = false;
+        menu.Join.AllowDebugInput = false;
+    }
+
+    void UnbindMenu()
+    {
+        if (menu == null) return;
+        menu.HostRequested -= HostGame;
+        menu.JoinRequested -= JoinGame;
+        menu.StartRequested -= StartGame;
+        menu.LeftLobby -= LeaveRoom;
+        menu = null;
+    }
+
+    void Update()
+    {
+        if (Instance != this || manager == null) return;
+        if (menu == null) return;
+        if (!guestLobbyOpened && session != null && manager.IsConnectedClient &&
+            !manager.IsHost && !menu.IsTransitioning && !returningToMenu)
         {
-            status = "Enter a join code";
+            menu.EnterGuestLobby();
+            guestLobbyOpened = true;
+        }
+        if (menu.Lobby.gameObject.activeInHierarchy)
+        {
+            menu.Lobby.SetRoomCode(RoomCode);
+            if (menu.Lobby.OpponentJoined != HasOpponent)
+                menu.Lobby.SetOpponentJoined(HasOpponent);
+            menu.Lobby.SetNetworkState(status, IsBusy || session == null || !manager.IsConnectedClient);
+        }
+    }
+
+    void Connected(ulong id)
+    {
+        HasOpponent = manager.IsServer ? manager.ConnectedClientsIds.Count == 2 : manager.IsConnectedClient;
+        ConnectionLost = false;
+        status = HasOpponent ? "Both players connected" :
+            string.IsNullOrEmpty(RoomCode) ? "Creating room..." : "Waiting for player";
+    }
+
+    void Disconnected(ulong id)
+    {
+        if (returningToMenu) return;
+        HasOpponent = false;
+        bool inGame = SceneManager.GetActiveScene().name == gameplaySceneName;
+        ConnectionLost = inGame || id == manager.LocalClientId;
+        status = ConnectionLost ? "Player disconnected. Return to the main menu to reconnect." : "Waiting for player";
+        if (networkConveyor != null && inGame) networkConveyor.StopLocalPresentation();
+        if (menu != null && !manager.IsHost) menu.Join.ShowError(status);
+    }
+
+    public void HostGame() => Connect(null);
+    public void JoinGame(string code) => Connect(code);
+
+    async void Connect(string code)
+    {
+        if (IsBusy || session != null || manager.ShutdownInProgress)
+        {
+            if (menu != null && code != null) menu.Join.ShowError("Please wait for the current connection to finish.");
             return;
         }
         operationInProgress = true;
-        status = "Joining room...";
+        guestLobbyOpened = false;
+        ConnectionLost = false;
+        status = code == null ? "Creating room..." : "Joining room...";
         try
         {
-            session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code);
-
-            status = NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient
-                ? "Connected to host!"
-                : "Joined room; connecting to host...";
-
-            Debug.Log("Successfully joined room!");
+            if (initialization == null || initialization.IsFaulted)
+                initialization = InitializeServices();
+            await initialization;
+            if (returningToMenu) return;
+            if (manager.NetworkConfig.NetworkTransport is UnityTransport transport)
+                transport.MaxPacketQueueSize = Math.Max(transport.MaxPacketQueueSize, 1024);
+            if (code == null)
+                session = await MultiplayerService.Instance.CreateSessionAsync(
+                    new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork());
+            else
+            {
+                code = code.Trim().ToUpperInvariant();
+                if (code.Length == 0) throw new ArgumentException("Enter a room code.");
+                session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code);
+            }
+            HasOpponent = manager.IsHost ? manager.ConnectedClientsIds.Count == 2 : manager.IsConnectedClient;
+            status = HasOpponent ? "Both players connected" : manager.IsHost ? "Waiting for player" : "Connecting to host...";
         }
         catch (Exception e)
         {
-            Debug.LogError($"Joining failed: {e}");
-            status = "Failed to join room!";
+            status = code == null ? "Could not create room. Go back and retry." :
+                IsRoomFull(e) ? "Full!" : "Could not join room. Check the code and try again.";
+            Debug.LogException(e);
+            if (menu != null && code != null) menu.Join.ShowError(status);
+            if (manager.IsListening && session == null) manager.Shutdown();
         }
         finally { operationInProgress = false; }
+    }
+
+    static bool IsRoomFull(Exception error)
+    {
+        // Session operations wrap the Lobby service exception; retain its specific reason.
+        for (Exception current = error; current != null; current = current.InnerException)
+        {
+            if (current is LobbyServiceException lobby && lobby.Reason == LobbyExceptionReason.LobbyFull)
+                return true;
+            if (current is RequestFailedException request && request.ErrorCode == (int)LobbyExceptionReason.LobbyFull)
+                return true;
+        }
+        return false;
+    }
+
+    public void StartGame()
+    {
+        if (IsBusy || session == null || !manager.IsHost || manager.ConnectedClientsIds.Count != 2) return;
+        LoadMatch();
+    }
+
+    public void StartRematch()
+    {
+        if (IsBusy || !manager.IsServer || manager.ConnectedClientsIds.Count != 2 ||
+            matchTimer == null || !matchTimer.HasMatchEnded) return;
+        LoadMatch();
+    }
+
+    void LoadMatch()
+    {
+        operationInProgress = true;
+        loadingMatch = true;
+        status = "Loading match...";
+        loadingSceneManager = manager.SceneManager;
+        loadingSceneManager.OnSceneEvent += MatchSceneEvent;
+        var result = loadingSceneManager.LoadScene(gameplaySceneName, LoadSceneMode.Single);
+        if (result != SceneEventProgressStatus.Started)
+        {
+            FinishLoading();
+            status = $"Could not load match ({result}). Return to the menu and retry.";
+            ConnectionLost = true;
+        }
+    }
+
+    void MatchSceneEvent(SceneEvent sceneEvent)
+    {
+        if (!loadingMatch || sceneEvent.SceneEventType != SceneEventType.LoadEventCompleted) return;
+        FinishLoading();
+        matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+        if (sceneEvent.ClientsThatTimedOut.Count != 0 || sceneEvent.ClientsThatCompleted.Count != 2 ||
+            manager.ConnectedClientsIds.Count != 2 || matchTimer == null || !matchTimer.IsSpawned)
+        {
+            status = "A player did not finish loading. Return to the main menu and retry.";
+            ConnectionLost = true;
+            return;
+        }
+        matchTimer.StartMatch();
+        status = "Match started";
+    }
+
+    void FinishLoading()
+    {
+        if (loadingSceneManager != null) loadingSceneManager.OnSceneEvent -= MatchSceneEvent;
+        loadingSceneManager = null;
+        loadingMatch = false;
+        operationInProgress = false;
     }
 
     public async void LeaveRoom()
     {
-        if (operationInProgress) return;
-        // Leaving is available before a match or after it finishes/disconnects.
-        if (matchTimer != null && matchTimer.IsMatchRunning &&
-            NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
-            return;
-        operationInProgress = true;
-        returningToLobby = true;
-        status = "Leaving room...";
+        if (returningToMenu) return;
+        returningToMenu = true;
+        status = "Returning to main menu...";
+        // Back during a Relay request waits for its result, then disposes that room too.
+        if (loadingMatch) FinishLoading();
+        while (operationInProgress && this != null) await Task.Yield();
+        if (this == null) return;
         try
         {
-            // Capture the gameplay scene before disposing the persistent network manager.
-            string scenePath = gameplayScenePath;
-            if (string.IsNullOrEmpty(scenePath))
-                throw new InvalidOperationException("Cannot return to lobby: gameplay scene is unknown.");
-
-            if (session != null && session.State != SessionState.Deleted)
-                await session.LeaveAsync();
-            session = null;
-            NetworkManager manager = NetworkManager.Singleton;
-            if (manager != null)
+            if (session != null && session.State != SessionState.Deleted) await session.LeaveAsync();
+        }
+        catch (Exception e) { Debug.LogWarning($"Session cleanup failed; disconnecting locally: {e.Message}"); }
+        session = null;
+        if (manager != null)
+        {
+            if (manager.IsListening && !manager.ShutdownInProgress) manager.Shutdown();
+            while (manager != null && (manager.IsListening || manager.ShutdownInProgress)) await Task.Yield();
+        }
+        if (SceneManager.GetActiveScene().name == menuSceneName)
+        {
+            // MainMenu.BackToMenu already slides back to the buttons. Keep that
+            // scene and its completed intro alive while resetting the connection.
+            HasOpponent = false;
+            ConnectionLost = false;
+            guestLobbyOpened = false;
+            networkConveyor = null;
+            matchTimer = null;
+            returningToMenu = false;
+            status = "Ready to host or join";
+            if (menu != null)
             {
-                if (manager.IsListening && !manager.ShutdownInProgress)
-                    manager.Shutdown();
-
-                // Shutdown completes on a subsequent frame. Starting another session
-                // sooner can reuse the old transport and network object registrations.
-                while (manager != null && (manager.IsListening || manager.ShutdownInProgress))
-                    await Task.Yield();
-
-                UnsubscribeNetworkEvents();
-                if (manager != null) Destroy(manager.gameObject);
-                await Task.Yield();
+                menu.Lobby.SetRoomCode("");
+                menu.Lobby.SetOpponentJoined(false);
             }
+            return;
+        }
 
-            // Recreate the timer, scoreboard, conveyor, recipes and hand together.
-            // NetworkManager persists across scene loads, so it must be removed above.
-            await SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Single);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Leaving failed: {e}");
-            status = "Failed to leave room. Try Leave Room again.";
-        }
-        finally
-        {
-            operationInProgress = false;
-            returningToLobby = false;
-        }
+        UnbindMenu();
+        string scene = menuSceneName;
+        Destroy(gameObject);
+        await Task.Yield();
+        await SceneManager.LoadSceneAsync(scene, LoadSceneMode.Single);
     }
 
-    void OnGUI()
+    void OnDestroy()
     {
-        GUILayout.BeginArea(new Rect(Screen.width - 270, 20, 250, 430));
-
-        GUILayout.Label("Sushi Showdown Multiplayer");
-
-        bool previousEnabled = GUI.enabled;
-        GUI.enabled = previousEnabled && CanConnect;
-        if (GUILayout.Button("Host Game", GUILayout.Height(40)))
+        if (Instance != this) return;
+        UnbindMenu();
+        SceneManager.sceneLoaded -= SceneLoaded;
+        if (manager != null && subscribed)
         {
-            HostGame();
+            manager.OnClientConnectedCallback -= Connected;
+            manager.OnClientDisconnectCallback -= Disconnected;
         }
-
-        GUILayout.Space(10);
-        GUILayout.Label("Join Code:");
-
-        joinCode = GUILayout.TextField(joinCode);
-
-        GUI.enabled = previousEnabled && CanConnect;
-        if (GUILayout.Button("Join Game", GUILayout.Height(40)))
-        {
-            JoinGame(joinCode.Trim());
-        }
-        GUI.enabled = previousEnabled;
-
-        bool matchFinished = matchTimer != null && matchTimer.HasMatchEnded;
-        bool disconnected = session != null && NetworkManager.Singleton != null &&
-            !NetworkManager.Singleton.IsConnectedClient && !operationInProgress;
-        if (session != null && (matchTimer == null || !matchTimer.HasMatchStarted || matchFinished || disconnected))
-        {
-            GUI.enabled = previousEnabled && !operationInProgress;
-            if (GUILayout.Button(matchFinished || disconnected ? "Return to Lobby" : "Leave Room"))
-                LeaveRoom();
-            GUI.enabled = previousEnabled;
-        }
-
-        GUILayout.Space(10);
-
-        if (session != null)
-        {
-            GUILayout.Label("Room Code: " + session.Code);
-        }
-
-        GUILayout.Label("Status: " + status);
-
-        GUILayout.Space(10);
-
-        if (networkConveyor != null && networkConveyor.IsSpawned)
-        {
-            GUILayout.Label(
-                "Total Claims: " + networkConveyor.TotalClaims.Value
-            );
-        }
-
-        GUILayout.Space(10);
-
-        // Networking debug information
-        if (NetworkManager.Singleton != null)
-        {
-            GUILayout.Label(
-                "NGO Server: " + NetworkManager.Singleton.IsServer
-            );
-
-            GUILayout.Label(
-                "NGO Client: " + NetworkManager.Singleton.IsClient
-            );
-
-            GUILayout.Label(
-                "NGO Connected: " +
-                NetworkManager.Singleton.IsConnectedClient
-            );
-        }
-
-        GUILayout.EndArea();
+        if (loadingSceneManager != null) loadingSceneManager.OnSceneEvent -= MatchSceneEvent;
+        Instance = null;
     }
 }

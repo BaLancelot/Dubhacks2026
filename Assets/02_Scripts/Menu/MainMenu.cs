@@ -178,6 +178,7 @@ namespace SushiDojo.Menu
         /// <summary>The player backed out of the lobby / join screen. Stop hosting or disconnect.</summary>
         public event Action LeftLobby;
 
+        public bool IsTransitioning => switching || leaving;
         public MenuLobbyPanel Lobby => lobbyPanel;
         public MenuJoinPanel Join => joinPanel;
 

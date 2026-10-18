@@ -21,8 +21,6 @@ public class NetworkScoreboard : NetworkBehaviour
     float localScoreChangeTimer;
     float opponentScoreChangeTimer;
     bool scoreDisplayInitialized;
-    GUIStyle localScoreStyle;
-    GUIStyle opponentScoreStyle;
 
     public override void OnNetworkSpawn()
     {
@@ -44,8 +42,8 @@ public class NetworkScoreboard : NetworkBehaviour
         Debug.Log("Network scoreboard ready!");
     }
 
-    int LocalScore => IsHost ? HostScore.Value : ClientScore.Value;
-    int OpponentScore => IsHost ? ClientScore.Value : HostScore.Value;
+    public int LocalScore => IsHost ? HostScore.Value : ClientScore.Value;
+    public int OpponentScore => IsHost ? ClientScore.Value : HostScore.Value;
 
     void Update()
     {
@@ -157,41 +155,14 @@ public class NetworkScoreboard : NetworkBehaviour
         ingredientCount <= RecipeData.IngredientSlotCount &&
         (matchTimer == null || matchTimer.IsMatchRunning);
 
-    private void OnGUI()
-    {
-        if (!IsSpawned)
-            return;
-
-        EnsureStyles();
-        int displayedLocalScore = localScoreChangeTimer > 0f
-            ? GetAnimatedScore(localScoreStart, LocalScore, localScoreChangeTimer)
-            : LocalScore;
-        int displayedOpponentScore = opponentScoreChangeTimer > 0f
-            ? GetAnimatedScore(opponentScoreStart, OpponentScore, opponentScoreChangeTimer)
-            : OpponentScore;
-        GUI.Label(new Rect(20, 12, 150, 66), displayedLocalScore.ToString(), localScoreStyle);
-        GUI.Label(new Rect(185, 18, 155, 48), displayedOpponentScore.ToString(), opponentScoreStyle);
-    }
-
-    void EnsureStyles()
-    {
-        if (localScoreStyle != null) return;
-
-        localScoreStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 52,
-            fontStyle = FontStyle.Bold,
-            alignment = TextAnchor.MiddleLeft
-        };
-        opponentScoreStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 32,
-            fontStyle = FontStyle.Bold,
-            alignment = TextAnchor.MiddleLeft
-        };
-        localScoreStyle.normal.textColor = Color.white;
-        opponentScoreStyle.normal.textColor = Color.white;
-    }
+    public int DisplayedLocalScore => localScoreChangeTimer > 0f
+        ? GetAnimatedScore(localScoreStart, LocalScore, localScoreChangeTimer) : LocalScore;
+    public int DisplayedOpponentScore => opponentScoreChangeTimer > 0f
+        ? GetAnimatedScore(opponentScoreStart, OpponentScore, opponentScoreChangeTimer) : OpponentScore;
+    public int LocalPoints => IsHost ? HostPoints.Value : ClientPoints.Value;
+    public int OpponentPoints => IsHost ? ClientPoints.Value : HostPoints.Value;
+    public int LocalWaste => IsHost ? HostWaste.Value : ClientWaste.Value;
+    public int OpponentWaste => IsHost ? ClientWaste.Value : HostWaste.Value;
 
     static int GetAnimatedScore(int startScore, int targetScore, float timer)
     {

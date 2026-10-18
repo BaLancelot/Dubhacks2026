@@ -217,7 +217,7 @@ MonoBehaviour:
   m_CharacterValidation: 4
   m_RegexValue: 
   m_GlobalPointSize: 52
-  m_CharacterLimit: 12
+  m_CharacterLimit: 6
   m_OnEndEdit:
     m_PersistentCalls:
       m_Calls: []
@@ -1765,14 +1765,14 @@ RectTransform:
   m_GameObject: {fileID: 647953906}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.467841, y: 2.3963575, z: 2.3963575}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 993743248}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 165}
+  m_AnchoredPosition: {x: 0, y: -9.5}
   m_SizeDelta: {x: 460, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &647953908
@@ -2657,6 +2657,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1495040364}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &900000001
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications: []
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fb47d7a973194fce8a1587fb79156466, type: 3}
 --- !u!1 &905000000
 GameObject:
   m_ObjectHideFlags: 0
@@ -3217,14 +3230,14 @@ RectTransform:
   m_GameObject: {fileID: 1141994392}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.66002446, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 993743248}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -5}
+  m_AnchoredPosition: {x: 0, y: 109}
   m_SizeDelta: {x: 460, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1141994394
@@ -6706,3 +6719,4 @@ SceneRoots:
   - {fileID: 1239563658}
   - {fileID: 1950000002}
   - {fileID: 1950000012}
+  - {fileID: 900000001}
