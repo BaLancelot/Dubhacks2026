@@ -57,6 +57,7 @@ namespace SushiDojo.Conveyor
         [SerializeField] bool useFixedSeed;
         [SerializeField] int seed;
 
+        public event Action OnStepStarted;
         public event Action<IngredientData> OnCenterRevealed;
         /// <summary>(playerId, ingredient) — fired when a player takes the center ingredient.</summary>
         public event Action<int, IngredientData> OnCenterTaken;
@@ -165,6 +166,7 @@ namespace SushiDojo.Conveyor
         void BeginStep()
         {
             ReleaseCenter();
+            OnStepStarted?.Invoke();
 
             if (stepCount % spawnEveryNSteps == 0) Spawn(EntryIndex);
             stepCount++;

@@ -1,0 +1,32 @@
+유니티 충돌형 젤리 캐릭터
+
+1. ZIP의 Chef_Unity 폴더를 Unity 프로젝트 Assets 폴더 안에 넣습니다.
+2. 스크립트 컴파일이 끝나면 새 테스트 Scene에서 Tools > Chef Jelly > Create collision test 를 누릅니다.
+3. Play를 누릅니다. Scene 뷰에서 캐릭터가 떨어져 바닥에 부딪치고 통통 튀면서 찌그러지는 모습을 확인합니다.
+   Game 뷰로 보려면 테스트 캐릭터가 보이도록 카메라를 배치하세요.
+4. 생성된 ChefImpact.prefab을 원하는 Scene에 넣으면 됩니다.
+
+Animator/Animation Clip 불필요. FBX에 키프레임 없음.
+실제 위치 반동: Rigidbody + CapsuleCollider + ChefBounce 탄성 재질.
+시각적 말랑함: ChefImpactJelly가 충돌 속도로 감쇠 스프링 계산.
+Collider는 안정적인 캡슐로 유지되고, 표면과 모자/손만 변형됩니다. 정밀 소프트바디 시뮬레이션은 아닙니다.
+
+Inspector 조절:
+- Impact Strength: 충돌에 얼마나 크게 찌그러질지
+- Frequency: 떨리는 속도
+- Damping: 높이면 빨리 멈춤
+- Max Squash: 최대 눌림 정도
+- ChefBounce 재질 Bounciness: 실제로 튀는 높이
+
+Play 중 컴포넌트 메뉴의 Test impact (Play Mode)로 외형 흔들림만 테스트할 수 있습니다.
+직접 만든 타격/이동 시스템에서는 jelly.Impact(hitNormal, hitSpeed)를 호출하세요.
+CharacterController, Trigger, 2D 물리는 자동 OnCollisionEnter 대상이 아닙니다.
+이미 Rigidbody가 있는 플레이어에 붙일 때 Rigidbody를 중복 추가하지 말고,
+동일한 물리 루트에 ChefImpactJelly를 붙인 후 visual에는 모델이 들어 있는 자식 Transform을 지정하세요.
+Animator가 동일한 뼈를 덮어쓰지 않도록 하세요.
+
+Unity 2022.3 / Unity 6의 3D API를 대상으로 작성했습니다.
+FBX 재가져오기(스킨, UV, 애니메이션 없음) 및 스프링 수치 안정성을 확인했습니다.
+Unity Editor 내 컴파일/Play Mode 검증은 수행하지 않았습니다.
+
+참고: https://docs.unity.com/en-us/engine/6000.0/script-reference/unityengine/rigidbody/oncollisionenter
