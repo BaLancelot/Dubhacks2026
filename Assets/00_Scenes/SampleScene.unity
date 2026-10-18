@@ -1791,8 +1791,8 @@ Canvas:
   m_GameObject: {fileID: 2100000001}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 1
-  m_Camera: {fileID: 519420031}
+  m_RenderMode: 0
+  m_Camera: {fileID: 0}
   m_PlaneDistance: 5
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
@@ -1970,40 +1970,12 @@ PrefabInstance:
       objectReference: {fileID: 2100000050}
     - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
       propertyPath: startingCards.Array.size
-      value: 8
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[0]'
+      propertyPath: networkConveyor
       value: 
-      objectReference: {fileID: 11400000, guid: 7494c542b44249438cb5a6fd8c8e8757, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[1]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 9c744680cc834039bd22cc093868f878, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[2]'
-      value: 
-      objectReference: {fileID: 11400000, guid: b174f6dadbb4429cbce57e9da16cad93, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[3]'
-      value: 
-      objectReference: {fileID: 11400000, guid: c9d2cae4d5ef4ad4924b88e99d9112e4, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[4]'
-      value: 
-      objectReference: {fileID: 11400000, guid: dc0ac6f699ac56d74411557b0a17f4e6, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[5]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 321ef1f257de6ae43b0d91f024b36ce5, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[6]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 321ef1f257de6ae43b0d91f024b36ce5, type: 2}
-    - target: {fileID: 11400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
-      propertyPath: 'startingCards.Array.data[7]'
-      value: 
-      objectReference: {fileID: 11400000, guid: 321ef1f257de6ae43b0d91f024b36ce5, type: 2}
+      objectReference: {fileID: 1988430578}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

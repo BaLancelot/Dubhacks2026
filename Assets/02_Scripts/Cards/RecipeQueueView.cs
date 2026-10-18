@@ -30,6 +30,13 @@ namespace SushiDojo.Cards
 
         void Awake()
         {
+            Canvas canvas = GetComponentInParent<Canvas>()?.rootCanvas;
+            if (canvas != null)
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.worldCamera = null;
+            }
+
             if (recipeDeck == null)
             {
                 Debug.LogError($"{nameof(RecipeQueueView)} requires a recipe deck.", this);
@@ -59,6 +66,7 @@ namespace SushiDojo.Cards
             PositionCard(topCard, TopSlotPosition);
             PositionCard(nextCard, NextSlotPosition);
             RefreshCards();
+            Debug.Log($"[RecipeQueue] Ready in {gameObject.scene.name}; recipes={recipeDeck.Length}.", this);
         }
 
         void OnEnable()

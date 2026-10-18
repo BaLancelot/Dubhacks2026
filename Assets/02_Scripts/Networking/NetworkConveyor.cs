@@ -4,6 +4,9 @@ using Unity.Netcode;
 using UnityEngine;
 using SushiDojo.Conveyor;
 using SushiDojo.Ingredients;
+using SushiDojo.Cards;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 public class NetworkConveyor : NetworkBehaviour
 {
@@ -19,9 +22,13 @@ public class NetworkConveyor : NetworkBehaviour
     // <= -2 = claimed ingredient encoded as -index - 2 (plate remains).
     private NetworkList<int> slots = new();
     private bool slotsChanged;
+    private bool claimPending;
 
     public override void OnNetworkSpawn()
     {
+        if (IsClient)
+            EnsureLocalGameplayUI();
+
         if (conveyor == null)
         {
             Debug.LogError("Conveyor reference is missing!");
@@ -54,8 +61,50 @@ public class NetworkConveyor : NetworkBehaviour
         }
     }
 
+    private void EnsureLocalGameplayUI()
+    {
+        // Virtual players can start with a scene snapshot that predates the UI.
+        // Create the local HUD before claims can deliver ingredient awards.
+        if (FindFirstObjectByType<IngredientHandView>() != null &&
+            FindFirstObjectByType<RecipeQueueView>() != null)
+            return;
+
+        GameObject prefab = Resources.Load<GameObject>("GameplayUI");
+        if (prefab == null)
+        {
+            Debug.LogError("Missing Resources/GameplayUI prefab.", this);
+            return;
+        }
+
+        IngredientHandView existingHand = FindFirstObjectByType<IngredientHandView>();
+        RecipeQueueView existingRecipes = FindFirstObjectByType<RecipeQueueView>();
+        GameObject ui = Instantiate(prefab);
+        ui.name = "Local Gameplay UI";
+        if (existingHand != null)
+        {
+            IngredientHandView duplicate = ui.GetComponentInChildren<IngredientHandView>();
+            duplicate.gameObject.SetActive(false);
+            Destroy(duplicate.gameObject);
+        }
+        if (existingRecipes != null)
+        {
+            RecipeQueueView duplicate = ui.GetComponentInChildren<RecipeQueueView>();
+            duplicate.gameObject.SetActive(false);
+            Destroy(duplicate.gameObject);
+        }
+
+        if (EventSystem.current == null)
+        {
+            GameObject events = new GameObject("Local EventSystem", typeof(EventSystem));
+            events.transform.SetParent(ui.transform, false);
+            events.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
+        }
+        Debug.Log("Created missing local gameplay UI for this player.", this);
+    }
+
     public override void OnNetworkDespawn()
 {
+    claimPending = false;
     slots.OnListChanged -= OnSlotsChanged;
 
     if (conveyor != null)
@@ -124,21 +173,25 @@ public class NetworkConveyor : NetworkBehaviour
         if (!IsSpawned || !IsClient)
             return;
 
+        IngredientHandView hand = FindFirstObjectByType<IngredientHandView>();
+        if (claimPending || hand == null || hand.IsFull)
+            return;
+
+        claimPending = true;
         TakeIngredientRpc();
     }
 
     // Claim validation always happens on the server.
     
-[Rpc(SendTo.Server)]
+[Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
 private void TakeIngredientRpc(RpcParams rpcParams = default)
 {
-    if (matchTimer != null && !matchTimer.IsMatchRunning)
-        return;
-
-    if (conveyor == null)
-        return;
-
     ulong playerId = rpcParams.Receive.SenderClientId;
+    if ((matchTimer != null && !matchTimer.IsMatchRunning) || conveyor == null)
+    {
+        RejectClaimRpc(RpcTarget.Single(playerId, RpcTargetUse.Temp));
+        return;
+    }
 
     if (conveyor.TryTakeCenter((int)playerId, out IngredientData ingredient))
     {
@@ -148,6 +201,7 @@ private void TakeIngredientRpc(RpcParams rpcParams = default)
         if (ingredientIndex < 0)
         {
             Debug.LogError("Claimed ingredient is not registered!");
+            RejectClaimRpc(RpcTarget.Single(playerId, RpcTargetUse.Temp));
             return;
         }
 
@@ -160,8 +214,17 @@ private void TakeIngredientRpc(RpcParams rpcParams = default)
             RpcTarget.Single(playerId, RpcTargetUse.Temp)
         );
     }
+    else
+    {
+        RejectClaimRpc(RpcTarget.Single(playerId, RpcTargetUse.Temp));
+    }
 }
 
+    [Rpc(SendTo.SpecifiedInParams)]
+    private void RejectClaimRpc(RpcParams rpcParams = default)
+    {
+        claimPending = false;
+    }
 
     // Runs only on the player who successfully claimed the food.
     [Rpc(SendTo.SpecifiedInParams)]
@@ -169,6 +232,7 @@ private void TakeIngredientRpc(RpcParams rpcParams = default)
         int ingredientIndex,
         RpcParams rpcParams = default)
     {
+        claimPending = false;
         if (conveyor == null)
             return;
 
@@ -188,7 +252,8 @@ private void TakeIngredientRpc(RpcParams rpcParams = default)
             $"LOCAL PLAYER RECEIVED: {ingredient.name}"
         );
 
-        // Teammate's local inventory system can subscribe to this.
+        if (OnIngredientAwarded == null)
+            Debug.LogError("Ingredient awarded, but no local card hand is subscribed. Check that this player loaded SampleScene with its UI canvas.", this);
         OnIngredientAwarded?.Invoke(ingredient);
     }
 }

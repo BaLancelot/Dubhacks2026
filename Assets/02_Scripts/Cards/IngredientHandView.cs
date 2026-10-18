@@ -8,7 +8,9 @@ namespace SushiDojo.Cards
 {
     public class IngredientHandView : MonoBehaviour
     {
+        public const int MaxCards = 8;
         [SerializeField] IngredientCardUI cardPrefab;
+        [SerializeField] NetworkConveyor networkConveyor;
         [SerializeField] IngredientData[] startingCards = Array.Empty<IngredientData>();
         [SerializeField, Min(0f)] float cardSpacing = 80f;
         [SerializeField, Min(0f)] float fanDrop = 42f;
@@ -38,9 +40,39 @@ namespace SushiDojo.Cards
         }
 
         public IReadOnlyList<IngredientCardUI> Cards => cards;
+        public bool IsFull => cards.Count >= MaxCards;
+
+        void OnEnable()
+        {
+            if (networkConveyor == null)
+                networkConveyor = FindFirstObjectByType<NetworkConveyor>();
+            if (networkConveyor != null)
+                networkConveyor.OnIngredientAwarded += HandleIngredientAwarded;
+        }
+
+        void OnDisable()
+        {
+            if (networkConveyor != null)
+                networkConveyor.OnIngredientAwarded -= HandleIngredientAwarded;
+        }
+
+        void HandleIngredientAwarded(IngredientData ingredient)
+        {
+            if (AddCard(ingredient) != null)
+                Debug.Log($"[IngredientHand] Added {ingredient.DisplayName}; cards={cards.Count}.", this);
+        }
 
         void Awake()
         {
+            // Apply at runtime too: editor/virtual-player scene snapshots can
+            // retain Screen Space Camera despite the saved scene using Overlay.
+            Canvas canvas = GetComponentInParent<Canvas>()?.rootCanvas;
+            if (canvas != null)
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.worldCamera = null;
+            }
+
             foreach (IngredientData data in startingCards)
                 AddCard(data);
         }
@@ -50,6 +82,7 @@ namespace SushiDojo.Cards
             if (placementZone == null)
                 placementZone = FindFirstObjectByType<IngredientPlacementZone>();
             LayoutCards();
+            Debug.Log($"[IngredientHand] Ready in {gameObject.scene.name}; conveyor bound={networkConveyor != null}.", this);
         }
 
         void Update()
@@ -106,6 +139,7 @@ namespace SushiDojo.Cards
         public IngredientCardUI AddCard(IngredientData data, Vector2 startPosition)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
+            if (IsFull) return null;
             if (cardPrefab == null)
                 throw new InvalidOperationException($"{nameof(IngredientHandView)} requires a card prefab.");
 
