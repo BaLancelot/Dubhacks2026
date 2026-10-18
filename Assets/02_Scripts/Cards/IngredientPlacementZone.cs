@@ -21,6 +21,7 @@ namespace SushiDojo.Cards
 
         public event Action<IngredientData> IngredientPlaced;
         public event Action<int> IngredientsDiscarded;
+        public event Action<IReadOnlyList<IngredientData>> IngredientsThrown;
         public IReadOnlyList<string> PlacedIngredientNames => placedIngredientNames;
         public bool IsFull => placedIngredientNames.Count >= RecipeData.IngredientSlotCount;
         public bool HasPlacedIngredients => placedIngredients.Count > 0;
@@ -195,15 +196,20 @@ namespace SushiDojo.Cards
             if (placedIngredients.Count == 0) return;
 
             int discardedIngredientCount = placedIngredients.Count;
+            var thrown = new List<IngredientData>(discardedIngredientCount);
             Vector3 boardUp = discardTrigger != null ? discardTrigger.transform.up : transform.up;
             foreach (BoardIngredient ingredient in placedIngredients)
             {
-                if (ingredient != null) ingredient.LaunchForDiscard(boardUp);
+                if (ingredient == null) continue;
+                if (ingredient.Data != null) thrown.Add(ingredient.Data);
+                ingredient.LaunchForDiscard(boardUp);
             }
 
             placedIngredients.Clear();
             placedIngredientNames.Clear();
             IngredientsDiscarded?.Invoke(discardedIngredientCount);
+            if (thrown.Count > 0)
+                IngredientsThrown?.Invoke(thrown);
         }
     }
 }

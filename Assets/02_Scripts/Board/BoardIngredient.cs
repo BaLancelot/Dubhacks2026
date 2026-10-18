@@ -24,6 +24,8 @@ namespace SushiDojo.Board
         float discardTimer;
         bool isDiscarding;
 
+        public IngredientData Data { get; private set; }
+
         void Awake()
         {
             ingredientCollider = GetComponent<BoxCollider>();
@@ -54,6 +56,7 @@ namespace SushiDojo.Board
         public bool Initialize(IngredientData data, int sortingOrderOffset)
         {
             if (data == null) throw new System.ArgumentNullException(nameof(data));
+            Data = data;
             if (ingredientRenderer == null)
             {
                 Debug.LogError($"{nameof(BoardIngredient)} requires an ingredient renderer.", this);

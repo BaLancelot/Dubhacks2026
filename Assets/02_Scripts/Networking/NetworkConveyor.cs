@@ -2,9 +2,11 @@
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using System.Collections.Generic;
 using SushiDojo.Conveyor;
 using SushiDojo.Ingredients;
 using SushiDojo.Cards;
+using SushiDojo.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 
@@ -23,11 +25,18 @@ public class NetworkConveyor : NetworkBehaviour
     private NetworkList<int> slots = new();
     private bool slotsChanged;
     private bool claimPending;
+    private IngredientPlacementZone placementZone;
+
+    const int MaxThrownIngredients = IngredientHandView.MaxCards + RecipeData.IngredientSlotCount;
 
     public override void OnNetworkSpawn()
     {
         if (IsClient)
             EnsureLocalGameplayUI();
+
+        placementZone = FindFirstObjectByType<IngredientPlacementZone>();
+        if (placementZone != null)
+            placementZone.IngredientsThrown += HandleLocalBoardThrown;
 
         if (conveyor == null)
         {
@@ -109,6 +118,8 @@ public class NetworkConveyor : NetworkBehaviour
 {
     claimPending = false;
     slots.OnListChanged -= OnSlotsChanged;
+    if (placementZone != null)
+        placementZone.IngredientsThrown -= HandleLocalBoardThrown;
 
     if (conveyor != null)
     {
@@ -125,6 +136,78 @@ public class NetworkConveyor : NetworkBehaviour
     private void OnSlotsChanged(NetworkListEvent<int> change)
     {
         slotsChanged = true;
+    }
+
+    void HandleLocalBoardThrown(IReadOnlyList<IngredientData> thrown)
+    {
+        if (!IsSpawned || !IsClient || conveyor == null || thrown == null || thrown.Count == 0)
+            return;
+        if (matchTimer != null && !matchTimer.IsMatchRunning && !matchTimer.IsMatchSettling)
+            return;
+
+        var indexes = new List<int>(thrown.Count);
+        foreach (IngredientData data in thrown)
+        {
+            int index = conveyor.GetIngredientIndex(data);
+            if (index >= 0)
+                indexes.Add(index);
+        }
+
+        if (indexes.Count == 0)
+            return;
+
+        ThrowBoardRpc(indexes.ToArray());
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    void ThrowBoardRpc(int[] ingredientIndexes, RpcParams rpcParams = default)
+    {
+        if (!IsServer || conveyor == null || ingredientIndexes == null)
+            return;
+        if (matchTimer != null && !matchTimer.IsMatchRunning && !matchTimer.IsMatchSettling)
+            return;
+
+        ulong sender = rpcParams.Receive.SenderClientId;
+        if (!NetworkManager.ConnectedClients.ContainsKey(sender))
+            return;
+
+        var valid = new List<int>(ingredientIndexes.Length);
+        foreach (int index in ingredientIndexes)
+        {
+            if (valid.Count >= MaxThrownIngredients)
+                break;
+            if (conveyor.GetIngredientByIndex(index) == null)
+                continue;
+            valid.Add(index);
+        }
+
+        if (valid.Count == 0)
+            return;
+
+        int[] payload = valid.ToArray();
+        foreach (ulong clientId in NetworkManager.ConnectedClientsIds)
+        {
+            if (clientId == sender)
+                continue;
+            ShowOpponentSplatRpc(payload, RpcTarget.Single(clientId, RpcTargetUse.Temp));
+        }
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void ShowOpponentSplatRpc(int[] ingredientIndexes, RpcParams rpcParams = default)
+    {
+        if (conveyor == null || ingredientIndexes == null)
+            return;
+
+        var sprites = new List<Sprite>(ingredientIndexes.Length);
+        foreach (int index in ingredientIndexes)
+        {
+            IngredientData data = conveyor.GetIngredientByIndex(index);
+            if (data != null && data.Sprite != null)
+                sprites.Add(data.Sprite);
+        }
+
+        BoardSplatOverlay.Play(sprites);
     }
 
     public void StopLocalPresentation() => StopConveyorForMatch();
