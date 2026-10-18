@@ -238,6 +238,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Ingredient Hand Preview
       objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 400001, guid: 254b421dd8b74d4e9dd1f6de847b6dd9, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -363,6 +367,7 @@ RectTransform:
   - {fileID: 300001}
   - {fileID: 300003}
   - {fileID: 900002}
+  - {fileID: 910002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -386,6 +391,10 @@ PrefabInstance:
     - target: {fileID: 100001, guid: b7431e2a6e1d4d6f9b2a1e83c7d4f610, type: 3}
       propertyPath: m_Name
       value: Ingredient Placement Zone
+      objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: b7431e2a6e1d4d6f9b2a1e83c7d4f610, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 400001, guid: b7431e2a6e1d4d6f9b2a1e83c7d4f610, type: 3}
       propertyPath: m_RootOrder
@@ -578,7 +587,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &700002
 Transform:
   m_ObjectHideFlags: 0
@@ -632,6 +641,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5a9db8ce12c5217c544f199ef13055ea, type: 2}
   - {fileID: 11400000, guid: 16c5bb683ab999d222f49f5f60fa4635, type: 2}
   - {fileID: 11400000, guid: 304c161d87adf37ae8cf9e0e42054587, type: 2}
+  - {fileID: 11400000, guid: 991cc498a7954ad1bf948a06230a7d95, type: 2}
+  - {fileID: 11400000, guid: 989fee99abc14c3da861a3f0d58d79c5, type: 2}
   startPosition: {x: -300, y: 200}
   addCardKey: 25
 --- !u!1001 &800001
@@ -645,6 +656,10 @@ PrefabInstance:
     - target: {fileID: 200001, guid: 70482c5a344147b28912f1697f5da4f0, type: 3}
       propertyPath: m_Name
       value: Conveyor Belt Preview
+      objectReference: {fileID: 0}
+    - target: {fileID: 200001, guid: 70482c5a344147b28912f1697f5da4f0, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 500001, guid: 70482c5a344147b28912f1697f5da4f0, type: 3}
       propertyPath: m_RootOrder
@@ -679,6 +694,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Recipe Queue
       objectReference: {fileID: 0}
+    - target: {fileID: 100001, guid: 2754d00f949a4b52af1ad169c80b7205, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 400001, guid: 2754d00f949a4b52af1ad169c80b7205, type: 3}
       propertyPath: m_RootOrder
       value: 2
@@ -709,6 +728,65 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 400001, guid: 2754d00f949a4b52af1ad169c80b7205, type: 3}
   m_PrefabInstance: {fileID: 900001}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &910001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 910002}
+  - component: {fileID: 910003}
+  m_Layer: 5
+  m_Name: Card Render Gallery
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &910002
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 224001}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &910003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5b39f275e2c4e679819c843c302cf17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ingredientCardPrefab: {fileID: 11400001, guid: d1444f2c3072491698b7d7cadbba91f0, type: 3}
+  recipeCardPrefab: {fileID: 11400001, guid: 58e4e1ba25d94bb6a0e25d3add925271, type: 3}
+  ingredients: []
+  recipes: []
+  ingredientScale: 0.85
+  recipeScale: 0.5
+  padding: 18
+  ingredientColumns: 6
+  recipeColumns: 5
+  hideOtherPreviewUi: 1
+  hideOnPlay: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
