@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SushiDojo.Ingredients;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace SushiDojo.Cards
 {
@@ -19,13 +20,30 @@ namespace SushiDojo.Cards
         [SerializeField, Min(1f)] float hoverScale = 1.1f;
         [SerializeField, Min(0f)] float hoverSwitchPadding = 8f;
         [SerializeField, Min(0.01f)] float animationSmoothTime = 0.12f;
+        [SerializeField, Min(0.01f)] float rejectShakeDuration = 0.48f;
+        [SerializeField, Min(0f)] float handShakeStrength = 10f;
+        [SerializeField, Min(0f)] float cardShakeStrength = 14f;
+        [SerializeField] Color rejectFlashColor = new(1f, 0.28f, 0.28f, 1f);
+        [SerializeField, Range(0f, 1f)] float rejectFlashStrength = 0.7f;
 
         readonly List<IngredientCardUI> cards = new();
         readonly Dictionary<IngredientCardUI, CardMotion> cardMotions = new();
+        readonly List<GraphicColorSample> handFlashGraphics = new();
+        readonly List<GraphicColorSample> cardFlashGraphics = new();
         IngredientCardUI hoveredCard;
         IngredientCardUI draggedCard;
         [SerializeField] IngredientPlacementZone placementZone;
         Vector2 dragOffset;
+        Vector2 handRestPosition;
+        float handShakeTimer;
+        float cardShakeTimer;
+        IngredientCardUI shakingCard;
+
+        struct GraphicColorSample
+        {
+            public Graphic Graphic;
+            public Color Color;
+        }
 
         /// <summary>The pointer moved onto a card (not fired while dragging).</summary>
         public event Action<IngredientCardUI> CardHovered;
@@ -64,7 +82,12 @@ namespace SushiDojo.Cards
         void HandleIngredientAwarded(IngredientData ingredient)
         {
             if (AddCard(ingredient) != null)
+            {
                 Debug.Log($"[IngredientHand] Added {ingredient.DisplayName}; cards={cards.Count}.", this);
+                return;
+            }
+
+            if (IsFull) PlayFullHandShake();
         }
 
         void Awake()
@@ -78,8 +101,59 @@ namespace SushiDojo.Cards
                 canvas.worldCamera = null;
             }
 
+            handRestPosition = ((RectTransform)transform).anchoredPosition;
+
             foreach (IngredientData data in startingCards)
                 AddCard(data);
+        }
+
+        /// <summary>Shake the whole hand when the player tries to take with a full deck.</summary>
+        public void PlayFullHandShake()
+        {
+            RestoreFlash(handFlashGraphics);
+            CaptureFlash(transform, handFlashGraphics);
+            handShakeTimer = rejectShakeDuration;
+        }
+
+        void PlayCardRejectShake(IngredientCardUI card)
+        {
+            if (card == null) return;
+            RestoreFlash(cardFlashGraphics);
+            CaptureFlash(card.transform, cardFlashGraphics);
+            shakingCard = card;
+            cardShakeTimer = rejectShakeDuration;
+        }
+
+        static void CaptureFlash(Transform root, List<GraphicColorSample> samples)
+        {
+            samples.Clear();
+            foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
+                samples.Add(new GraphicColorSample { Graphic = graphic, Color = graphic.color });
+        }
+
+        void ApplyFlash(List<GraphicColorSample> samples, float amount)
+        {
+            if (samples.Count == 0) return;
+            float blend = Mathf.Clamp01(amount) * rejectFlashStrength;
+            for (int i = 0; i < samples.Count; i++)
+            {
+                Graphic graphic = samples[i].Graphic;
+                if (graphic == null) continue;
+                Color baseColor = samples[i].Color;
+                Color flash = rejectFlashColor;
+                flash.a = baseColor.a;
+                graphic.color = Color.Lerp(baseColor, flash, blend);
+            }
+        }
+
+        static void RestoreFlash(List<GraphicColorSample> samples)
+        {
+            for (int i = 0; i < samples.Count; i++)
+            {
+                Graphic graphic = samples[i].Graphic;
+                if (graphic != null) graphic.color = samples[i].Color;
+            }
+            samples.Clear();
         }
 
         void Start()
@@ -96,6 +170,7 @@ namespace SushiDojo.Cards
 
             float smoothTime = Mathf.Max(0.01f, animationSmoothTime);
             float deltaTime = Time.unscaledDeltaTime;
+            RectTransform handRect = (RectTransform)transform;
 
             foreach (IngredientCardUI card in cards)
             {
@@ -128,6 +203,42 @@ namespace SushiDojo.Cards
                     smoothTime,
                     Mathf.Infinity,
                     deltaTime);
+            }
+
+            if (handShakeTimer > 0f)
+            {
+                handShakeTimer = Mathf.Max(0f, handShakeTimer - deltaTime);
+                float falloff = handShakeTimer / rejectShakeDuration;
+                falloff *= falloff;
+                handRect.anchoredPosition = handRestPosition +
+                    UnityEngine.Random.insideUnitCircle * (handShakeStrength * falloff);
+                ApplyFlash(handFlashGraphics, falloff);
+                if (handShakeTimer <= 0f) RestoreFlash(handFlashGraphics);
+            }
+            else
+            {
+                handRect.anchoredPosition = handRestPosition;
+            }
+
+            if (cardShakeTimer > 0f && shakingCard != null && cards.Contains(shakingCard))
+            {
+                cardShakeTimer = Mathf.Max(0f, cardShakeTimer - deltaTime);
+                float falloff = cardShakeTimer / rejectShakeDuration;
+                falloff *= falloff;
+                RectTransform shakingRect = (RectTransform)shakingCard.transform;
+                shakingRect.anchoredPosition +=
+                    UnityEngine.Random.insideUnitCircle * (cardShakeStrength * falloff);
+                ApplyFlash(cardFlashGraphics, falloff);
+                if (cardShakeTimer <= 0f)
+                {
+                    RestoreFlash(cardFlashGraphics);
+                    shakingCard = null;
+                }
+            }
+            else if (cardShakeTimer <= 0f)
+            {
+                if (cardFlashGraphics.Count > 0) RestoreFlash(cardFlashGraphics);
+                shakingCard = null;
             }
         }
 
@@ -174,12 +285,21 @@ namespace SushiDojo.Cards
             cardMotions.Remove(card);
             if (hoveredCard == card) hoveredCard = null;
             if (draggedCard == card) draggedCard = null;
+            if (shakingCard == card)
+            {
+                RestoreFlash(cardFlashGraphics);
+                shakingCard = null;
+                cardShakeTimer = 0f;
+            }
             Destroy(card.gameObject);
             LayoutCards();
         }
 
         public void ClearHand()
         {
+            RestoreFlash(handFlashGraphics);
+            RestoreFlash(cardFlashGraphics);
+
             foreach (IngredientCardUI card in cards)
                 Destroy(card.gameObject);
 
@@ -187,6 +307,10 @@ namespace SushiDojo.Cards
             cardMotions.Clear();
             hoveredCard = null;
             draggedCard = null;
+            shakingCard = null;
+            cardShakeTimer = 0f;
+            handShakeTimer = 0f;
+            ((RectTransform)transform).anchoredPosition = handRestPosition;
         }
 
         void UpdateHoveredCardFromPointer()
@@ -236,10 +360,15 @@ namespace SushiDojo.Cards
             if (draggedCard != null)
             {
                 IngredientCardUI card = draggedCard;
-                bool placed = placementZone != null &&
+                bool overZone = placementZone != null &&
+                    placementZone.ContainsScreenPoint(pointerPosition, eventCamera);
+                bool placed = overZone &&
                     placementZone.TryPlaceIngredient(card.Data, pointerPosition, eventCamera);
                 EndDrag();
-                if (placed) RemoveCard(card);
+                if (placed)
+                    RemoveCard(card);
+                else if (overZone && placementZone.IsFull)
+                    PlayCardRejectShake(card);
             }
 
             SetHoveredCard(GetCardAtPointer(localPointerPosition));

@@ -177,8 +177,14 @@ public class NetworkConveyor : NetworkBehaviour
             return;
 
         IngredientHandView hand = FindFirstObjectByType<IngredientHandView>();
-        if (claimPending || hand == null || hand.IsFull)
+        if (claimPending || hand == null)
             return;
+
+        if (hand.IsFull)
+        {
+            hand.PlayFullHandShake();
+            return;
+        }
 
         claimPending = true;
         TakeIngredientRpc();

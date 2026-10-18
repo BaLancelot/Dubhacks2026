@@ -22,8 +22,18 @@ namespace SushiDojo.Cards
         public event Action<IngredientData> IngredientPlaced;
         public event Action<int> IngredientsDiscarded;
         public IReadOnlyList<string> PlacedIngredientNames => placedIngredientNames;
+        public bool IsFull => placedIngredientNames.Count >= RecipeData.IngredientSlotCount;
         /// <summary>The board placed ingredients sit on.</summary>
         public Transform Board => discardTrigger != null ? discardTrigger.transform : transform;
+
+        public bool ContainsScreenPoint(Vector2 screenPosition, Camera eventCamera)
+        {
+            Camera camera = worldCamera != null ? worldCamera :
+                (eventCamera != null ? eventCamera : Camera.main);
+            if (camera == null || !isActiveAndEnabled) return false;
+            return RectTransformUtility.RectangleContainsScreenPoint(
+                (RectTransform)transform, screenPosition, camera);
+        }
 
         void OnEnable()
         {
