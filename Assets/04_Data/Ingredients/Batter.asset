@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: batter
   displayName: Batter
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 22c118faa9b152058d8ae65bbbb1262b, type: 3}
   spawnWeight: 0.6

@@ -20,7 +20,7 @@ namespace SushiDojo.Cards
         int placementSortingOrderOffset;
 
         public event Action<IngredientData> IngredientPlaced;
-        public event Action IngredientsDiscarded;
+        public event Action<int> IngredientsDiscarded;
         public IReadOnlyList<string> PlacedIngredientNames => placedIngredientNames;
 
         void OnEnable()
@@ -124,6 +124,7 @@ namespace SushiDojo.Cards
         {
             if (placedIngredients.Count == 0) return;
 
+            int discardedIngredientCount = placedIngredients.Count;
             Vector3 boardUp = discardTrigger != null ? discardTrigger.transform.up : transform.up;
             foreach (BoardIngredient ingredient in placedIngredients)
             {
@@ -132,7 +133,7 @@ namespace SushiDojo.Cards
 
             placedIngredients.Clear();
             placedIngredientNames.Clear();
-            IngredientsDiscarded?.Invoke();
+            IngredientsDiscarded?.Invoke(discardedIngredientCount);
         }
     }
 }

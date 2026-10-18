@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Katsudon
   m_EditorClassIdentifier: 
   displayName: Katsudon
-  foodSprite: {fileID: 0}
+  foodSprite: {fileID: 21300000, guid: 45cbefc97bdf5f4faa8f1d79599a283d, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 7494c542b44249438cb5a6fd8c8e8757, type: 2}
   - {fileID: 11400000, guid: 981cbc980a086057c8c98797c57d99bd, type: 2}

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SalmonSushi
   m_EditorClassIdentifier: 
   displayName: Salmon Sushi
-  foodSprite: {fileID: 0}
+  foodSprite: {fileID: 21300000, guid: 7b2dd9988d9a55be97db9809b0204d1f, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 7494c542b44249438cb5a6fd8c8e8757, type: 2}
   - {fileID: 11400000, guid: 9c744680cc834039bd22cc093868f878, type: 2}

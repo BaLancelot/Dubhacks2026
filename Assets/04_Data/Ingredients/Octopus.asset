@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: octopus
   displayName: Octopus
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: e34105c19a0755bbaae260e6a1c93f31, type: 3}
   spawnWeight: 0.4

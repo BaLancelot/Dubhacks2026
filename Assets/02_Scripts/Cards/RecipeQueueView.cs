@@ -139,9 +139,12 @@ namespace SushiDojo.Cards
 
         }
 
-        void OnIngredientsDiscarded()
+        void OnIngredientsDiscarded(int discardedIngredientCount)
         {
             submittedIngredients.Clear();
+            NetworkScoreboard scoreboard = FindFirstObjectByType<NetworkScoreboard>();
+            if (scoreboard != null)
+                scoreboard.RecordDiscardedIngredients(discardedIngredientCount);
         }
 
         bool MatchesRecipe(RecipeData recipe) =>
@@ -187,7 +190,7 @@ namespace SushiDojo.Cards
             }
             isAnimating = false;
             if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
-            RecipeCompleted?.Invoke(completedRecipe);
+            NotifyRecipeCompleted(completedRecipe);
         }
 
         static int CountRequiredIngredients(RecipeData recipe)
@@ -199,6 +202,14 @@ namespace SushiDojo.Cards
             }
 
             return count;
+        }
+
+        void NotifyRecipeCompleted(RecipeData recipe)
+        {
+            RecipeCompleted?.Invoke(recipe);
+            NetworkScoreboard scoreboard = FindFirstObjectByType<NetworkScoreboard>();
+            if (scoreboard != null)
+                scoreboard.RecordRecipeCompleted(CountRequiredIngredients(recipe));
         }
 
         void ClearSubmittedIngredients()
@@ -261,7 +272,7 @@ namespace SushiDojo.Cards
 
             isAnimating = false;
             if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
-            RecipeCompleted?.Invoke(completedRecipe);
+            NotifyRecipeCompleted(completedRecipe);
         }
 
         IEnumerator AnimateCards(

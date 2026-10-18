@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: pork
   displayName: Pork
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: ab398557ad905e6dad896f5682936830, type: 3}
   spawnWeight: 0.8

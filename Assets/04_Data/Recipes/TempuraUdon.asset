@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TempuraUdon
   m_EditorClassIdentifier: 
   displayName: Tempura Udon
-  foodSprite: {fileID: 0}
+  foodSprite: {fileID: 21300000, guid: bb00ce20c2ca5e45987cad70c28174e0, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 5a9db8ce12c5217c544f199ef13055ea, type: 2}
   - {fileID: 11400000, guid: 6fa88dc646321e2141e694a195d2d83e, type: 2}

@@ -179,13 +179,6 @@ public class NetworkMatchTimer : NetworkBehaviour
             else if (winner.Value == 0)
                 GUILayout.Label("IT'S A TIE!");
 
-            if (scoreboard != null)
-            {
-                GUILayout.Label(
-                    $"Final Score: {scoreboard.HostScore.Value} - " +
-                    $"{scoreboard.ClientScore.Value}"
-                );
-            }
         }
         else
         {

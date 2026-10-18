@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Takoyaki
   m_EditorClassIdentifier: 
   displayName: Takoyaki
-  foodSprite: {fileID: 0}
+  foodSprite: {fileID: 21300000, guid: 497c6bccd8745c4bbd111869e3568e7e, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 1a26fc42a4cc70ea23edd83f4d65a28d, type: 2}
   - {fileID: 11400000, guid: 259fe62381912ecfa28d434306ddec0e, type: 2}

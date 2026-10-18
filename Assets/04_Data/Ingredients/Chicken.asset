@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: chicken
   displayName: Chicken
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 1ed66051f84f5c05baad32d65854f2cd, type: 3}
   spawnWeight: 0.8

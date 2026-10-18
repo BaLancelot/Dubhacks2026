@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: sauce
   displayName: Sauce
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 046ac9bff7ad530aab7ef73562fa4897, type: 3}
   spawnWeight: 1

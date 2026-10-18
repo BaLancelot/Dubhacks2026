@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: broth
   displayName: Broth
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 6796d9638efd5847a89ab67a85385aae, type: 3}
   spawnWeight: 0.5

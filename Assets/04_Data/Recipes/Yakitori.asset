@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Yakitori
   m_EditorClassIdentifier: 
   displayName: Yakitori
-  foodSprite: {fileID: 0}
+  foodSprite: {fileID: 21300000, guid: 53e8fe4529c554ecacc44cf89a678790, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 304c161d87adf37ae8cf9e0e42054587, type: 2}
   - {fileID: 11400000, guid: 048e4ece1ac29012449744ce0f04e465, type: 2}
