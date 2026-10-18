@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Chicken Teriyaki Don
   m_EditorClassIdentifier:
   displayName: Chicken Teriyaki Don
-  foodSprite: {fileID: 21300000, guid: b8c53df6813b5be094d5ba7818be30a3, type: 3}
+  foodSprite: {fileID: 21300000, guid: 871a1cbe82dc4824594ccc83d5d4f385, type: 3}
   ingredients:
   - {fileID: 11400000, guid: 7494c542b44249438cb5a6fd8c8e8757, type: 2}
   - {fileID: 11400000, guid: 304c161d87adf37ae8cf9e0e42054587, type: 2}
-  - {fileID: 11400000, guid: 048e4ece1ac29012449744ce0f04e465, type: 2}
+  - {fileID: 11400000, guid: bb6a5f9e3ec437f43c4422a4810bb769, type: 2}
   - {fileID: 11400000, guid: f736235eb8b2ce2ebc955ee14d21064a, type: 2}
   - {fileID: 0}
   - {fileID: 0}

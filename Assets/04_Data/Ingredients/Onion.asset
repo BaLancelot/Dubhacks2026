@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: onion
   displayName: Onion
-  sprite: {fileID: 21300000, guid: 024115e70d1c5f319a32a9e8f5eb1b89, type: 3}
+  sprite: {fileID: 21300000, guid: 1a134e797f9b6d84bbaf433143922267, type: 3}
   spawnWeight: 0.7

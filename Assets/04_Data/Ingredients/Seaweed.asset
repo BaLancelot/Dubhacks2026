@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: seaweed
   displayName: Seaweed
-  sprite: {fileID: 21300000, guid: bd143918457754859378474f5eb33382, type: 3}
+  sprite: {fileID: 21300000, guid: 0bcbb0cf32c5ed943b1b21865bd8f8ff, type: 3}
   spawnWeight: 1

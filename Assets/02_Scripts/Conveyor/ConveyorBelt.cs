@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using SushiDojo.Ingredients;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace SushiDojo.Conveyor
 {
@@ -129,6 +130,8 @@ namespace SushiDojo.Conveyor
 
         void Update()
         {
+            HandleClickInput();
+
             switch (state)
             {
                 case State.Moving:
@@ -162,6 +165,28 @@ namespace SushiDojo.Conveyor
 
             if (state == State.Holding)
                 state = State.Idle;
+        }
+
+        /// <summary>
+        /// Finds a belt item under the mouse on click. Looks through every 2D collider along the ray,
+        /// so props in front of the belt can't swallow the click (OnMouseDown only sees the first hit).
+        /// </summary>
+        void HandleClickInput()
+        {
+            Mouse mouse = Mouse.current;
+            if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
+
+            Camera cam = Camera.main;
+            if (cam == null) return;
+
+            Ray ray = cam.ScreenPointToRay(mouse.position.ReadValue());
+            foreach (RaycastHit2D hit in Physics2D.GetRayIntersectionAll(ray))
+            {
+                BeltItem item = hit.collider.GetComponentInParent<BeltItem>();
+                if (item == null || !item.transform.IsChildOf(ItemRoot)) continue;
+                item.Click();
+                return;
+            }
         }
 
         void OnBeltItemClicked(BeltItem item)

@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: egg
   displayName: Egg
-  sprite: {fileID: 21300000, guid: cb27afd032035ea8aa9848019f4ef36e, type: 3}
+  sprite: {fileID: 21300000, guid: 1e6088e4e6c14334493029d1a73089a0, type: 3}
   spawnWeight: 1.2

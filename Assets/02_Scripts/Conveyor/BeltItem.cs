@@ -107,14 +107,15 @@ namespace SushiDojo.Conveyor
             Cover();
         }
 
-        void OnMouseDown()
-{
-    if (IsRevealed && !IsTaken)
-    {
-        Debug.Log("Requesting ingredient claim!");
-        onClicked?.Invoke(this);
-    }
-}
+        /// <summary>Called by ConveyorBelt when the player clicks this item.</summary>
+        public void Click()
+        {
+            if (IsRevealed && !IsTaken)
+            {
+                Debug.Log("Requesting ingredient claim!");
+                onClicked?.Invoke(this);
+            }
+        }
     
         public void Cover()
         {

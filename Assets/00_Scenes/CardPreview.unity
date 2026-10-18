@@ -632,13 +632,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5a9db8ce12c5217c544f199ef13055ea, type: 2}
   - {fileID: 11400000, guid: 16c5bb683ab999d222f49f5f60fa4635, type: 2}
   - {fileID: 11400000, guid: 304c161d87adf37ae8cf9e0e42054587, type: 2}
-  - {fileID: 11400000, guid: 048e4ece1ac29012449744ce0f04e465, type: 2}
-  - {fileID: 11400000, guid: 120399449cf53e70bcf21d156e5591f0, type: 2}
-  - {fileID: 11400000, guid: 1a26fc42a4cc70ea23edd83f4d65a28d, type: 2}
-  - {fileID: 11400000, guid: 259fe62381912ecfa28d434306ddec0e, type: 2}
-  - {fileID: 11400000, guid: cca23bac8fb9863c04a22d07a2302865, type: 2}
-  - {fileID: 11400000, guid: 316873691d06e5f88d95ad85edf283e4, type: 2}
-  - {fileID: 11400000, guid: 97570502e991ea621b8b9a816fe54949, type: 2}
   startPosition: {x: -300, y: 200}
   addCardKey: 25
 --- !u!1001 &800001

@@ -67,6 +67,14 @@ MonoBehaviour:
   beltStep: {fileID: 0}
   coverOpen: {fileID: 11400000, guid: 0bea20d1c95f4f97a82569fdf45625e0, type: 2}
   ingredientTaken: {fileID: 0}
+  ingredientCollected: {fileID: 11400000, guid: 3435bcd8feb3463580d03b864a5cbd30, type: 2}
+  hand: {fileID: 0}
+  placementZone: {fileID: 0}
+  cardHover: {fileID: 11400000, guid: 4c17339ff9e84dca8037a0645aeb7d5a, type: 2}
+  cardSelect: {fileID: 11400000, guid: a5c2916318e34424999cefd7b554a918, type: 2}
+  cardPlaced:
+  - {fileID: 11400000, guid: 0b33ea0f26cc4f1e92b1745cec88b0c9, type: 2}
+  - {fileID: 11400000, guid: 58f7c4ad6ef2439db7ce05856ca23063, type: 2}
   dustCloud: {fileID: 0}
   cloudStart: {fileID: 11400000, guid: 3cb77f9962014112998f275b5c6da9f3, type: 2}
   cloudCovered: {fileID: 0}
