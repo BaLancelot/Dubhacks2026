@@ -2444,7 +2444,7 @@ MonoBehaviour:
   titleRight: {fileID: 1950000013}
   titleLeftViewport: {x: 0.35, y: 0.72}
   titleRightViewport: {x: 0.65, y: 0.28}
-  titleWidth: 1.15
+  titleWidth: 1
   titleSlideDuration: 1.6
   titleRightDelay: 0.15
   titleSlideCurve:
@@ -6078,7 +6078,7 @@ Transform:
   m_GameObject: {fileID: 1950000011}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4, y: -1.8, z: 4}
+  m_LocalPosition: {x: 4, y: -1.8, z: 4.26}
   m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

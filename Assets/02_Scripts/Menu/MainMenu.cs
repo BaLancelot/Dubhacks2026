@@ -114,7 +114,7 @@ namespace SushiDojo.Menu
         [SerializeField] Vector2 titleLeftViewport = new(0.35f, 0.72f);
         [SerializeField] Vector2 titleRightViewport = new(0.65f, 0.28f);
         [Tooltip("Each title's width as a fraction of the screen width. Above 1 bleeds off the screen edges.")]
-        [SerializeField, Range(0.1f, 2f)] float titleWidth = 1.15f;
+        [SerializeField, Range(0.1f, 2f)] float titleWidth = 1f;
         [SerializeField, Min(0.01f)] float titleSlideDuration = 1.6f;
         [Tooltip("The right title starts this much later than the left one.")]
         [SerializeField, Min(0f)] float titleRightDelay = 0.15f;
