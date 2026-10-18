@@ -8,7 +8,7 @@ using SushiDojo.Conveyor;
 public class NetworkMatchTimer : NetworkBehaviour
 {
     [Header("Match Settings")]
-    [SerializeField] private float matchDuration = 20f;
+    [SerializeField] private float matchDuration = 180f;
     [SerializeField, Min(1f)] private float settleTimeout = 60f;
     [SerializeField] private ConveyorBelt conveyor;
     [Header("References")]
