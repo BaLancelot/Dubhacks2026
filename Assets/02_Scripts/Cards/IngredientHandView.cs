@@ -22,7 +22,7 @@ namespace SushiDojo.Cards
         readonly Dictionary<IngredientCardUI, CardMotion> cardMotions = new();
         IngredientCardUI hoveredCard;
         IngredientCardUI draggedCard;
-        IngredientPlacementZone placementZone;
+        [SerializeField] IngredientPlacementZone placementZone;
         Vector2 dragOffset;
 
         sealed class CardMotion
@@ -47,9 +47,8 @@ namespace SushiDojo.Cards
 
         void Start()
         {
-            Canvas canvas = GetComponentInParent<Canvas>();
-            if (canvas != null)
-                placementZone = canvas.GetComponentInChildren<IngredientPlacementZone>();
+            if (placementZone == null)
+                placementZone = FindFirstObjectByType<IngredientPlacementZone>();
             LayoutCards();
         }
 
@@ -278,17 +277,28 @@ namespace SushiDojo.Cards
             LayoutCards();
         }
 
+        // Shared with the editor preview so its outlines match the playable hand.
+        public void GetLayoutMetrics(Vector2 cardSize, int count, out float spacing, out float centerHeight)
+        {
+            RectTransform handRect = (RectTransform)transform;
+            float angle = Mathf.Abs(fanAngle) * Mathf.Deg2Rad;
+            float scale = Mathf.Max(1f, hoverScale);
+            float halfWidth = (cardSize.x * Mathf.Abs(Mathf.Cos(angle)) +
+                cardSize.y * Mathf.Abs(Mathf.Sin(angle))) * scale * 0.5f;
+            float halfHeight = (cardSize.y * Mathf.Abs(Mathf.Cos(angle)) +
+                cardSize.x * Mathf.Abs(Mathf.Sin(angle))) * scale * 0.5f;
+            float availableSpan = Mathf.Max(0f, handRect.rect.width - halfWidth * 2f - 16f);
+            spacing = count > 1 ? Mathf.Min(cardSpacing, availableSpan / (count - 1)) : 0f;
+            centerHeight = Mathf.Min(halfHeight + fanDrop + 8f,
+                handRect.rect.height - halfHeight - hoverLift - 8f);
+        }
+
         void LayoutCards()
         {
             if (cards.Count == 0) return;
 
-            RectTransform handRect = (RectTransform)transform;
-            float cardWidth = ((RectTransform)cards[0].transform).rect.width;
-            float availableSpan = Mathf.Max(0f, handRect.rect.width - cardWidth);
-            float spacing = cards.Count > 1
-                ? Mathf.Min(cardSpacing, availableSpan / (cards.Count - 1))
-                : 0f;
-            float centerHeight = Mathf.Min(150f, handRect.rect.height - ((RectTransform)cards[0].transform).rect.height * 0.5f);
+            GetLayoutMetrics(((RectTransform)cards[0].transform).rect.size, cards.Count,
+                out float spacing, out float centerHeight);
 
             for (int i = 0; i < cards.Count; i++)
             {

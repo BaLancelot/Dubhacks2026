@@ -29,10 +29,15 @@ namespace SushiDojo.Conveyor
         [SerializeField, Min(1)] int sideSlotCount = 2;
         [SerializeField, Min(0.01f)] float slotSpacing = 1.5f;
 
-        [Header("Background")]
-        [Tooltip("Scaled to cover all visible slots.")]
-        [SerializeField] SpriteRenderer beltBackground;
-        [SerializeField, Min(0.01f)] float backgroundHeight = 1.5f;
+        [Header("Belt Body")]
+        [Tooltip("Its local X scale is set to the belt length. Child meshes should be 1 unit long on X.")]
+        [SerializeField] Transform beltBody;
+        [Tooltip("Belt length beyond the visible slots, in world units.")]
+        [SerializeField, Min(0f)] float beltExtraLength;
+        [Tooltip("World length of one texture repeat along the belt. Used by BeltTexture faces.")]
+        [SerializeField, Min(0.01f)] float textureTileLength = 1.5f;
+        [Tooltip("Slot box height in the scene gizmo.")]
+        [SerializeField, Min(0.01f)] float gizmoSlotHeight = 1.5f;
 
         [Header("Timing")]
         [SerializeField, Min(0.01f)] float moveDuration = 0.2f;
@@ -58,6 +63,10 @@ namespace SushiDojo.Conveyor
 
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
         public bool IsRunning { get; private set; }
+        /// <summary>Total distance the belt has moved, in world units. Drives texture scrolling.</summary>
+        public float TravelDistance => (completedSteps + currentMoveProgress) * slotSpacing;
+        public float TextureTileLength => textureTileLength;
+        public float BeltLength => VisibleSlotCount * slotSpacing + beltExtraLength;
         public bool CanTakeCenter =>
             state == State.Holding && CenterItem != null && CenterItem.IsRevealed && !CenterItem.IsTaken;
 
@@ -75,10 +84,12 @@ namespace SushiDojo.Conveyor
         State state = State.Idle;
         float stateTimer;
         int stepCount;
+        int completedSteps;
+        float currentMoveProgress;
 
         void Awake()
         {
-            ApplyBackgroundSize();
+            ApplyBodyLength();
         }
 
         void Start()
@@ -174,6 +185,7 @@ namespace SushiDojo.Conveyor
             stateTimer += Time.deltaTime;
             float progress = Mathf.Clamp01(stateTimer / moveDuration);
             float eased = moveCurve.Evaluate(progress);
+            currentMoveProgress = eased;
 
             for (int i = 0; i < LaneLength; i++)
                 if (lane[i] != null)
@@ -186,6 +198,9 @@ namespace SushiDojo.Conveyor
         {
             for (int i = 0; i < LaneLength; i++)
                 if (lane[i] != null) lane[i].transform.localPosition = SlotPosition(i);
+
+            completedSteps++;
+            currentMoveProgress = 0f;
 
             if (lane[ExitIndex] != null)
             {
@@ -255,26 +270,24 @@ namespace SushiDojo.Conveyor
             return new Vector3((laneIndex - CenterIndex) * slotSpacing, 0f, 0f);
         }
 
-        void ApplyBackgroundSize()
+        void ApplyBodyLength()
         {
-            if (beltBackground == null || beltBackground.sprite == null) return;
+            if (beltBody == null) return;
 
-            Vector2 spriteSize = beltBackground.sprite.bounds.size;
-            if (spriteSize.x <= 0f || spriteSize.y <= 0f) return;
-
-            float width = VisibleSlotCount * slotSpacing;
-            beltBackground.transform.localScale = new Vector3(width / spriteSize.x, backgroundHeight / spriteSize.y, 1f);
+            Vector3 scale = beltBody.localScale;
+            scale.x = BeltLength;
+            beltBody.localScale = scale;
         }
 
         void OnValidate()
         {
-            ApplyBackgroundSize();
+            ApplyBodyLength();
         }
 
         void OnDrawGizmos()
         {
             Gizmos.matrix = ItemRoot.localToWorldMatrix;
-            Vector3 slotSize = new Vector3(slotSpacing, backgroundHeight, 0f);
+            Vector3 slotSize = new Vector3(slotSpacing, gizmoSlotHeight, 0f);
 
             for (int i = 0; i < LaneLength; i++)
             {

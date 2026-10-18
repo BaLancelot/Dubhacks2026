@@ -18,7 +18,7 @@ namespace SushiDojo.Cards
 
         RecipeCardUI topCard;
         RecipeCardUI nextCard;
-        IngredientPlacementZone placementZone;
+        [SerializeField] IngredientPlacementZone placementZone;
         readonly List<IngredientData> submittedIngredients = new();
         int currentIndex;
         bool isAnimating;
@@ -53,6 +53,7 @@ namespace SushiDojo.Cards
                 return;
             }
 
+            recipeDeck = (RecipeData[])recipeDeck.Clone();
             topCard = Instantiate(cardPrefab, transform, false);
             nextCard = Instantiate(cardPrefab, transform, false);
             PositionCard(topCard, TopSlotPosition);
@@ -62,10 +63,8 @@ namespace SushiDojo.Cards
 
         void OnEnable()
         {
-            Canvas canvas = GetComponentInParent<Canvas>();
-            placementZone = canvas != null
-                ? canvas.GetComponentInChildren<IngredientPlacementZone>(true)
-                : null;
+            if (placementZone == null)
+                placementZone = FindFirstObjectByType<IngredientPlacementZone>();
             if (placementZone == null)
             {
                 Debug.LogWarning(
@@ -75,6 +74,7 @@ namespace SushiDojo.Cards
                 return;
             }
 
+            placementZone.AcceptingIngredients = CurrentRecipe != null && !isAnimating;
             placementZone.IngredientPlaced += OnIngredientPlaced;
         }
 
@@ -96,51 +96,75 @@ namespace SushiDojo.Cards
         {
             if (CurrentRecipe == null || placementZone == null) return;
 
-            if (isAnimating)
-            {
-                Debug.LogWarning("Wait for the recipe queue animation to finish before placing ingredients.", this);
-                ClearSubmittedIngredients();
-                return;
-            }
+            if (isAnimating) return;
 
             submittedIngredients.Add(ingredient);
-            int requiredIngredientCount = CountRequiredIngredients(CurrentRecipe);
-            if (submittedIngredients.Count < requiredIngredientCount) return;
-
+            RecipeData secondRecipe = currentIndex + 1 < recipeDeck.Length
+                ? recipeDeck[currentIndex + 1] : null;
             if (MatchesRecipe(CurrentRecipe))
             {
                 CompleteTopRecipe();
                 return;
             }
+            if (secondRecipe != null && MatchesRecipe(secondRecipe))
+            {
+                ClearSubmittedIngredients();
+                StartCoroutine(CompleteSecondRecipeRoutine());
+                return;
+            }
 
-            Debug.LogWarning(
-                $"Ingredients do not match {CurrentRecipe.DisplayName}; cleared the placement zone.",
-                this);
+            // Keep a partial combination only while either visible recipe can use it.
+            if (CanCompleteRecipe(CurrentRecipe) ||
+                (secondRecipe != null && CanCompleteRecipe(secondRecipe))) return;
+
+            Debug.LogWarning("Ingredients do not match either visible recipe; cleared the placement zone.", this);
             ClearSubmittedIngredients();
         }
 
-        bool MatchesRecipe(RecipeData recipe)
+        bool MatchesRecipe(RecipeData recipe) =>
+            submittedIngredients.Count == CountRequiredIngredients(recipe) && CanCompleteRecipe(recipe);
+
+        bool CanCompleteRecipe(RecipeData recipe)
         {
-            if (submittedIngredients.Count != CountRequiredIngredients(recipe)) return false;
-
-            bool[] matched = new bool[submittedIngredients.Count];
-            foreach (IngredientData requiredIngredient in recipe.Ingredients)
+            bool[] matched = new bool[recipe.Ingredients.Count];
+            foreach (IngredientData submitted in submittedIngredients)
             {
-                if (requiredIngredient == null) continue;
-
                 int matchIndex = -1;
-                for (int i = 0; i < submittedIngredients.Count; i++)
+                for (int i = 0; i < recipe.Ingredients.Count; i++)
                 {
-                    if (matched[i] || submittedIngredients[i] != requiredIngredient) continue;
+                    if (matched[i] || recipe.Ingredients[i] == null || recipe.Ingredients[i] != submitted) continue;
                     matchIndex = i;
                     break;
                 }
-
                 if (matchIndex < 0) return false;
                 matched[matchIndex] = true;
             }
-
             return true;
+        }
+
+        IEnumerator CompleteSecondRecipeRoutine()
+        {
+            isAnimating = true;
+            if (placementZone != null) placementZone.AcceptingIngredients = false;
+            RecipeData completedRecipe = recipeDeck[currentIndex + 1];
+            yield return AnimateCards((RectTransform)nextCard.transform,
+                NextSlotPosition + Vector2.right * exitDistance,
+                Vector3.one * (cardScale * 0.8f), null, Vector2.zero, Vector3.one);
+
+            // Remove only the second recipe; the first remains available.
+            for (int i = currentIndex + 1; i < recipeDeck.Length - 1; i++)
+                recipeDeck[i] = recipeDeck[i + 1];
+            Array.Resize(ref recipeDeck, recipeDeck.Length - 1);
+            RefreshCards();
+            if (currentIndex + 1 < recipeDeck.Length)
+            {
+                PositionCard(nextCard, NextSlotPosition + Vector2.right * exitDistance);
+                yield return AnimateCards((RectTransform)nextCard.transform,
+                    NextSlotPosition, Vector3.one * cardScale, null, Vector2.zero, Vector3.one);
+            }
+            isAnimating = false;
+            if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
+            RecipeCompleted?.Invoke(completedRecipe);
         }
 
         static int CountRequiredIngredients(RecipeData recipe)
@@ -164,6 +188,7 @@ namespace SushiDojo.Cards
         IEnumerator CompleteTopRecipeRoutine()
         {
             isAnimating = true;
+            if (placementZone != null) placementZone.AcceptingIngredients = false;
             RecipeData completedRecipe = recipeDeck[currentIndex];
             RectTransform topRect = (RectTransform)topCard.transform;
             RectTransform nextRect = currentIndex + 1 < recipeDeck.Length
@@ -212,6 +237,7 @@ namespace SushiDojo.Cards
             }
 
             isAnimating = false;
+            if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
             RecipeCompleted?.Invoke(completedRecipe);
         }
 

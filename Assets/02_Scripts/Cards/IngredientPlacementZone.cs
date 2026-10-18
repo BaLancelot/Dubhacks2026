@@ -5,8 +5,13 @@ using UnityEngine;
 
 namespace SushiDojo.Cards
 {
+    [RequireComponent(typeof(RectTransform), typeof(Canvas))]
     public class IngredientPlacementZone : MonoBehaviour
     {
+        [SerializeField] Camera worldCamera;
+
+        public bool AcceptingIngredients { get; set; } = true;
+
         readonly List<string> placedIngredientNames = new();
 
         public event Action<IngredientData> IngredientPlaced;
@@ -15,9 +20,14 @@ namespace SushiDojo.Cards
         public bool TryPlaceIngredient(IngredientData data, Vector2 screenPosition, Camera eventCamera)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
+            if (!AcceptingIngredients) return false;
+
+            Camera camera = worldCamera != null ? worldCamera :
+                (eventCamera != null ? eventCamera : Camera.main);
+            if (camera == null || !isActiveAndEnabled) return false;
 
             RectTransform zoneRect = (RectTransform)transform;
-            if (!RectTransformUtility.RectangleContainsScreenPoint(zoneRect, screenPosition, eventCamera))
+            if (!RectTransformUtility.RectangleContainsScreenPoint(zoneRect, screenPosition, camera))
                 return false;
 
             if (placedIngredientNames.Count >= RecipeData.IngredientSlotCount)

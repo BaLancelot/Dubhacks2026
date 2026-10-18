@@ -12,15 +12,6 @@ namespace SushiDojo.Cards
         [SerializeField] Image[] ingredientImages = new Image[RecipeData.IngredientSlotCount];
         [SerializeField] Sprite emptySlotSprite;
 
-        void Awake()
-        {
-            recipeName.resizeTextForBestFit = true;
-            recipeName.resizeTextMinSize = 10;
-            recipeName.resizeTextMaxSize = 22;
-            recipeName.horizontalOverflow = HorizontalWrapMode.Wrap;
-            recipeName.verticalOverflow = VerticalWrapMode.Truncate;
-        }
-
         public void SetData(RecipeData data)
         {
             if (data == null)
