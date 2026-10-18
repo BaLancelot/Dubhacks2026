@@ -18,6 +18,7 @@ namespace SushiDojo.Conveyor
         [SerializeField] SpriteRenderer plateRenderer;
         [Tooltip("Its prefab pose is the final open pose.")]
         [SerializeField] SpriteRenderer openLidRenderer;
+        [SerializeField] Sprite fallbackIngredientSprite;
 
         [Tooltip("Longest side of the ingredient sprite is scaled to this size (world units).")]
         [SerializeField, Min(0.01f)] float ingredientFitSize = 1f;
@@ -94,7 +95,14 @@ namespace SushiDojo.Conveyor
             onClicked = clickHandler;
             Data = data;
             IsTaken = false;
-            ingredientRenderer.sprite = data.Sprite;
+            ingredientRenderer.sprite = data.Sprite != null ? data.Sprite : fallbackIngredientSprite;
+            if (ingredientRenderer.sprite == null)
+            {
+                Debug.LogError(
+                    $"{nameof(BeltItem)} needs a fallback sprite when '{data.DisplayName}' has no sprite.",
+                    this);
+                return;
+            }
             FitIngredientToSize();
             Cover();
         }

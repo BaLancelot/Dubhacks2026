@@ -54,6 +54,7 @@ MonoBehaviour:
   coverRenderer: {fileID: 21200005}
   plateRenderer: {fileID: 21200002}
   openLidRenderer: {fileID: 21200006}
+  fallbackIngredientSprite: {fileID: 7482667652216324306, guid: b43d971bb8b445bc8b3698ed446d52af, type: 3}
   ingredientFitSize: 0.8
   revealSparkle: {fileID: 11400004}
   revealPopDuration: 0.25

@@ -61,12 +61,24 @@ namespace SushiDojo.Cards
             }
 
             recipeDeck = (RecipeData[])recipeDeck.Clone();
+            ShuffleRecipeDeck();
             topCard = Instantiate(cardPrefab, transform, false);
             nextCard = Instantiate(cardPrefab, transform, false);
             PositionCard(topCard, TopSlotPosition);
             PositionCard(nextCard, NextSlotPosition);
             RefreshCards();
             Debug.Log($"[RecipeQueue] Ready in {gameObject.scene.name}; recipes={recipeDeck.Length}.", this);
+        }
+
+        void ShuffleRecipeDeck()
+        {
+            var random = new System.Random(Guid.NewGuid().GetHashCode());
+            for (int i = recipeDeck.Length - 1; i > 0; i--)
+            {
+                int swapIndex = random.Next(i + 1);
+                (recipeDeck[i], recipeDeck[swapIndex]) =
+                    (recipeDeck[swapIndex], recipeDeck[i]);
+            }
         }
 
         void OnEnable()
