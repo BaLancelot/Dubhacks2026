@@ -588,5 +588,29 @@ namespace SushiDojo.Conveyor
                 );
             }
         }
+
+        public int GetIngredientIndex(IngredientData data)
+        {
+            return ingredients.IndexOf(data);
+        }
+
+        public IngredientData GetIngredientByIndex(int index)
+        {
+            if (index < 0 || index >= ingredients.Count)
+                return null;
+
+            return ingredients[index];
+        }
+        public void FreezeBelt()
+        {
+            IsRunning = false;
+            state = State.Idle;
+
+            if (remoteMovement != null)
+            {
+                StopCoroutine(remoteMovement);
+                remoteMovement = null;
+            }
+        }
     }
 }
