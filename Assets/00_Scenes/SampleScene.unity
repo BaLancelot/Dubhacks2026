@@ -1084,7 +1084,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkMatchTimer
   ShowTopMostFoldoutHeaderGroup: 1
-  matchDuration: 180
+  matchDuration: 10
   conveyor: {fileID: 56303665}
   scoreboard: {fileID: 290076698}
 --- !u!1 &1061370093
