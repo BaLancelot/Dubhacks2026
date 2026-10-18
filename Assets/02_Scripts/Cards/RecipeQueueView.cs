@@ -16,6 +16,15 @@ namespace SushiDojo.Cards
         [SerializeField, Min(0.01f)] float animationDuration = 0.35f;
         [SerializeField, Min(0f)] float exitDistance = 190f;
 
+        [Header("Completion")]
+        [Tooltip("Cooking effect on the board. The card waits for it. Empty = finds one in the scene; none = old instant behavior.")]
+        [SerializeField] MergePresentation mergePresentation;
+        [Tooltip("Card scale peak during the 'pop' once the dish is done (multiplier).")]
+        [SerializeField, Min(1f)] float cardPopScale = 1.15f;
+        [SerializeField, Min(0.01f)] float cardPopDuration = 0.2f;
+        [Tooltip("The completed card fades away over this long before the next card moves up.")]
+        [SerializeField, Min(0.01f)] float cardFadeDuration = 0.45f;
+
         RecipeCardUI topCard;
         RecipeCardUI nextCard;
         [SerializeField] IngredientPlacementZone placementZone;
@@ -83,6 +92,8 @@ namespace SushiDojo.Cards
 
         void OnEnable()
         {
+            if (mergePresentation == null)
+                mergePresentation = FindFirstObjectByType<MergePresentation>();
             if (placementZone == null)
                 placementZone = FindFirstObjectByType<IngredientPlacementZone>();
             if (placementZone == null)
@@ -112,7 +123,8 @@ namespace SushiDojo.Cards
         public void CompleteTopRecipe()
         {
             if (!enabled || isAnimating || currentIndex >= recipeDeck.Length) return;
-            ClearSubmittedIngredients();
+            // The board ingredients are handed to the merge effect (or cleared) inside the routine.
+            submittedIngredients.Clear();
             StartCoroutine(CompleteTopRecipeRoutine());
         }
 
@@ -132,7 +144,7 @@ namespace SushiDojo.Cards
             }
             if (secondRecipe != null && MatchesRecipe(secondRecipe))
             {
-                ClearSubmittedIngredients();
+                submittedIngredients.Clear();
                 StartCoroutine(CompleteSecondRecipeRoutine());
                 return;
             }
@@ -173,9 +185,8 @@ namespace SushiDojo.Cards
             isAnimating = true;
             if (placementZone != null) placementZone.AcceptingIngredients = false;
             RecipeData completedRecipe = recipeDeck[currentIndex + 1];
-            yield return AnimateCards((RectTransform)nextCard.transform,
-                NextSlotPosition + Vector2.right * exitDistance,
-                Vector3.one * (cardScale * 0.8f), null, Vector2.zero, Vector3.one);
+            yield return CookOnBoard(completedRecipe);
+            yield return PopAndFade(nextCard);
 
             // Remove only the second recipe; the first remains available.
             for (int i = currentIndex + 1; i < recipeDeck.Length - 1; i++)
@@ -212,13 +223,6 @@ namespace SushiDojo.Cards
                 scoreboard.RecordRecipeCompleted(CountRequiredIngredients(recipe));
         }
 
-        void ClearSubmittedIngredients()
-        {
-            submittedIngredients.Clear();
-            if (placementZone != null)
-                placementZone.ConsumePlacedIngredients();
-        }
-
         IEnumerator CompleteTopRecipeRoutine()
         {
             isAnimating = true;
@@ -229,13 +233,12 @@ namespace SushiDojo.Cards
                 ? (RectTransform)nextCard.transform
                 : null;
 
-            yield return AnimateCards(
-                topRect,
-                TopSlotPosition + Vector2.left * exitDistance,
-                Vector3.one * (cardScale * 0.8f),
-                nextRect,
-                TopSlotPosition,
-                Vector3.one * cardScale);
+            // Cook first, then the finished card pops and fades, then the next card moves up.
+            yield return CookOnBoard(completedRecipe);
+            yield return PopAndFade(topCard);
+            if (nextRect != null)
+                yield return AnimateCards(nextRect, TopSlotPosition, Vector3.one * cardScale, null, Vector2.zero, Vector3.one);
+            topRect.anchoredPosition = TopSlotPosition + Vector2.left * exitDistance;
 
             currentIndex++;
             RecipeCardUI oldTopCard = topCard;
@@ -274,6 +277,41 @@ namespace SushiDojo.Cards
             if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
             NotifyRecipeCompleted(completedRecipe);
         }
+
+        /// <summary>Plays the board cooking effect, or just clears the board when there is none.</summary>
+        IEnumerator CookOnBoard(RecipeData recipe)
+        {
+            if (mergePresentation != null)
+                yield return mergePresentation.Play(recipe);
+            else if (placementZone != null)
+                placementZone.ConsumePlacedIngredients();
+        }
+
+        /// <summary>The completed card bounces once, then fades out where it is.</summary>
+        IEnumerator PopAndFade(RecipeCardUI card)
+        {
+            RectTransform rect = (RectTransform)card.transform;
+            CanvasGroup group = CardGroup(card);
+            Vector3 baseScale = rect.localScale;
+
+            for (float t = 0f; t < cardPopDuration; t += Time.unscaledDeltaTime)
+            {
+                float bump = Mathf.Sin(t / cardPopDuration * Mathf.PI);
+                rect.localScale = baseScale * Mathf.Lerp(1f, cardPopScale, bump);
+                yield return null;
+            }
+            rect.localScale = baseScale;
+
+            for (float t = 0f; t < cardFadeDuration; t += Time.unscaledDeltaTime)
+            {
+                group.alpha = 1f - Mathf.SmoothStep(0f, 1f, t / cardFadeDuration);
+                yield return null;
+            }
+            group.alpha = 0f;
+        }
+
+        static CanvasGroup CardGroup(RecipeCardUI card) =>
+            card.TryGetComponent(out CanvasGroup group) ? group : card.gameObject.AddComponent<CanvasGroup>();
 
         IEnumerator AnimateCards(
             RectTransform first,
@@ -332,6 +370,8 @@ namespace SushiDojo.Cards
             RectTransform cardRect = (RectTransform)card.transform;
             cardRect.anchoredPosition = position;
             cardRect.localScale = Vector3.one * cardScale;
+            // A card that was faded out after completion comes back visible when reused.
+            CardGroup(card).alpha = 1f;
         }
 
         Vector2 TopSlotPosition => new(-cardSpacing * 0.5f, 0f);

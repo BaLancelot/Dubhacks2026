@@ -1,4 +1,5 @@
 using SushiDojo.Ingredients;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,7 +8,7 @@ namespace SushiDojo.Cards
     public class IngredientCardUI : MonoBehaviour
     {
         [SerializeField] Image ingredientImage;
-        [SerializeField] Text ingredientName;
+        [SerializeField] TMP_Text ingredientName;
 
         public IngredientData Data { get; private set; }
 

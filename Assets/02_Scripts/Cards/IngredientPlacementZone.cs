@@ -22,6 +22,8 @@ namespace SushiDojo.Cards
         public event Action<IngredientData> IngredientPlaced;
         public event Action<int> IngredientsDiscarded;
         public IReadOnlyList<string> PlacedIngredientNames => placedIngredientNames;
+        /// <summary>The board placed ingredients sit on.</summary>
+        public Transform Board => discardTrigger != null ? discardTrigger.transform : transform;
 
         void OnEnable()
         {
@@ -119,6 +121,15 @@ namespace SushiDojo.Cards
 
             placedIngredients.Clear();
             placedIngredientNames.Clear();
+        }
+
+        /// <summary>Hands the placed ingredients over (e.g. to the merge effect) without destroying them.</summary>
+        public List<BoardIngredient> TakePlacedIngredients()
+        {
+            var taken = new List<BoardIngredient>(placedIngredients);
+            placedIngredients.Clear();
+            placedIngredientNames.Clear();
+            return taken;
         }
 
         public void ClearPlacedIngredients()

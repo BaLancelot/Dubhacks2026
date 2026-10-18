@@ -27,6 +27,11 @@ namespace SushiDojo.Cards
         [SerializeField] IngredientPlacementZone placementZone;
         Vector2 dragOffset;
 
+        /// <summary>The pointer moved onto a card (not fired while dragging).</summary>
+        public event Action<IngredientCardUI> CardHovered;
+        /// <summary>A card was pressed and picked up.</summary>
+        public event Action<IngredientCardUI> CardPicked;
+
         sealed class CardMotion
         {
             public Vector2 basePosition;
@@ -216,6 +221,7 @@ namespace SushiDojo.Cards
                     RectTransform cardRect = (RectTransform)pressedCard.transform;
                     dragOffset = localPointerPosition - cardRect.anchoredPosition;
                     LayoutCards();
+                    CardPicked?.Invoke(pressedCard);
                 }
             }
 
@@ -309,6 +315,7 @@ namespace SushiDojo.Cards
 
             hoveredCard = card;
             LayoutCards();
+            if (card != null && draggedCard == null) CardHovered?.Invoke(card);
         }
 
         // Shared with the editor preview so its outlines match the playable hand.

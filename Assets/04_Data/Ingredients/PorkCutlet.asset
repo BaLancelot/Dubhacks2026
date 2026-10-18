@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: pork_cutlet
   displayName: Pork Cutlet
-  sprite: {fileID: 21300000, guid: 43497e350b7c5c2b87d20d97e90df1fd, type: 3}
+  sprite: {fileID: 21300000, guid: 1f0ee3d377e120a4fa78a7c403e07413, type: 3}
   spawnWeight: 0.5

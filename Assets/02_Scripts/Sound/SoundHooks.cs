@@ -1,4 +1,5 @@
 using SushiDojo.Board;
+using SushiDojo.Cards;
 using SushiDojo.Conveyor;
 using SushiDojo.Effects;
 using SushiDojo.Ingredients;
@@ -18,6 +19,17 @@ namespace SushiDojo.Sound
         [SerializeField] SoundCue coverOpen;
         [SerializeField] SoundCue ingredientTaken;
 
+        [Tooltip("This player won an ingredient from the belt.")]
+        [SerializeField] SoundCue ingredientCollected;
+
+        [Header("Cards")]
+        [SerializeField] IngredientHandView hand;
+        [SerializeField] IngredientPlacementZone placementZone;
+        [SerializeField] SoundCue cardHover;
+        [SerializeField] SoundCue cardSelect;
+        [Tooltip("A card dropped on the board becomes an ingredient. One is picked at random.")]
+        [SerializeField] SoundCue[] cardPlaced;
+
         [Header("Cooking Cloud")]
         [SerializeField] DustCloud dustCloud;
         [SerializeField] SoundCue cloudStart;
@@ -33,9 +45,14 @@ namespace SushiDojo.Sound
         [SerializeField, Min(0f)] float minBoardThrowSpeed = 5f;
         [SerializeField] SoundCue boardReturn;
 
+        NetworkConveyor networkConveyor;
+        bool cardsBound;
+        float nextBindAttempt;
+
         void Awake()
         {
             if (belt == null) belt = FindFirstObjectByType<ConveyorBelt>();
+            networkConveyor = FindFirstObjectByType<NetworkConveyor>();
             if (dustCloud == null) dustCloud = FindRootCloud();
             if (board == null) board = FindFirstObjectByType<ThrowableBody>();
             if (boardRespawn == null && board != null) boardRespawn = board.GetComponent<ThrowRespawn>();
@@ -61,6 +78,41 @@ namespace SushiDojo.Sound
                 board.Released += HandleBoardThrow;
             }
             if (boardRespawn != null) boardRespawn.OnReturnedHome += HandleBoardReturn;
+            if (networkConveyor != null) networkConveyor.OnIngredientAwarded += HandleIngredientCollected;
+            BindCards();
+        }
+
+        void Update()
+        {
+            // The card hand can be created after this (virtual players spawn their UI late), so keep looking.
+            if (cardsBound || Time.unscaledTime < nextBindAttempt) return;
+            nextBindAttempt = Time.unscaledTime + 1f;
+            BindCards();
+        }
+
+        void BindCards()
+        {
+            if (cardsBound) return;
+            if (hand == null) hand = FindFirstObjectByType<IngredientHandView>();
+            if (placementZone == null) placementZone = FindFirstObjectByType<IngredientPlacementZone>();
+            if (hand == null || placementZone == null) return;
+
+            hand.CardHovered += HandleCardHover;
+            hand.CardPicked += HandleCardSelect;
+            placementZone.IngredientPlaced += HandleCardPlaced;
+            cardsBound = true;
+        }
+
+        void UnbindCards()
+        {
+            if (!cardsBound) return;
+            if (hand != null)
+            {
+                hand.CardHovered -= HandleCardHover;
+                hand.CardPicked -= HandleCardSelect;
+            }
+            if (placementZone != null) placementZone.IngredientPlaced -= HandleCardPlaced;
+            cardsBound = false;
         }
 
         void OnDisable()
@@ -83,6 +135,16 @@ namespace SushiDojo.Sound
                 board.Released -= HandleBoardThrow;
             }
             if (boardRespawn != null) boardRespawn.OnReturnedHome -= HandleBoardReturn;
+            if (networkConveyor != null) networkConveyor.OnIngredientAwarded -= HandleIngredientCollected;
+            UnbindCards();
+        }
+
+        void HandleIngredientCollected(IngredientData _) => SoundManager.Play(ingredientCollected);
+        void HandleCardHover(IngredientCardUI _) => SoundManager.Play(cardHover);
+        void HandleCardSelect(IngredientCardUI _) => SoundManager.Play(cardSelect);
+        void HandleCardPlaced(IngredientData _)
+        {
+            if (cardPlaced != null && cardPlaced.Length > 0) SoundManager.Play(cardPlaced[Random.Range(0, cardPlaced.Length)]);
         }
 
         void HandleBeltStep() => SoundManager.Play(beltStep);

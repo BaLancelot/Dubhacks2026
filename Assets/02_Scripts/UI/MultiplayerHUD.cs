@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,14 +7,16 @@ namespace SushiDojo.UI
     // Presentation only: the network timer and scoreboard remain the source of truth.
     public class MultiplayerHUD : MonoBehaviour
     {
-        [SerializeField] Text localScore;
-        [SerializeField] Text opponentScore;
-        [SerializeField] Text timerText;
-        [SerializeField] Text statusText;
+        [Tooltip("Optional. Scores now show in the speech bubbles.")]
+        [SerializeField] TMP_Text localScore;
+        [Tooltip("Optional. Scores now show in the speech bubbles.")]
+        [SerializeField] TMP_Text opponentScore;
+        [SerializeField] TMP_Text timerText;
+        [SerializeField] TMP_Text statusText;
         [SerializeField] GameObject resultsPanel;
-        [SerializeField] Text resultTitle;
-        [SerializeField] Text resultDetails;
-        [SerializeField] Text replayStatus;
+        [SerializeField] TMP_Text resultTitle;
+        [SerializeField] TMP_Text resultDetails;
+        [SerializeField] TMP_Text replayStatus;
         [SerializeField] Button replayButton;
         [SerializeField] Button returnButton;
         [SerializeField] Button menuButton;
@@ -43,8 +46,10 @@ namespace SushiDojo.UI
             bool ended = timer != null && timer.HasMatchEnded;
             bool running = timer != null && timer.IsMatchRunning;
             bool scoresReady = scoreboard != null && scoreboard.IsSpawned;
-            localScore.text = scoresReady ? $"YOU  {scoreboard.DisplayedLocalScore}" : "YOU  0";
-            opponentScore.text = scoresReady ? $"OPPONENT  {scoreboard.DisplayedOpponentScore}" : "OPPONENT  0";
+            if (localScore != null)
+                localScore.text = scoresReady ? $"YOU  {scoreboard.DisplayedLocalScore}" : "YOU  0";
+            if (opponentScore != null)
+                opponentScore.text = scoresReady ? $"OPPONENT  {scoreboard.DisplayedOpponentScore}" : "OPPONENT  0";
             int seconds = timer != null ? Mathf.CeilToInt(timer.TimeRemaining) : 180;
             timerText.text = $"{seconds / 60:00}:{seconds % 60:00}";
             statusText.text = multiplayer == null ? "Open MainMenu to host or join" :

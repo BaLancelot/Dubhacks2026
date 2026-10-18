@@ -33,6 +33,14 @@ namespace SushiDojo.DebugTools
             if (keyboard == null || belt == null) return;
             if (!keyboard[takeKey].wasPressedThisFrame) return;
 
+            // In a networked match, claim through the server like a click so the card reaches the hand.
+            NetworkConveyor network = FindFirstObjectByType<NetworkConveyor>();
+            if (network != null && network.IsSpawned)
+            {
+                network.RequestTakeIngredient();
+                return;
+            }
+
             if (!belt.TryTakeCenter(playerId, out _))
                 Debug.Log("[BeltDebug] Nothing to take.");
         }
