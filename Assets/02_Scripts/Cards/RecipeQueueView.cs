@@ -76,12 +76,16 @@ namespace SushiDojo.Cards
 
             placementZone.AcceptingIngredients = CurrentRecipe != null && !isAnimating;
             placementZone.IngredientPlaced += OnIngredientPlaced;
+            placementZone.IngredientsDiscarded += OnIngredientsDiscarded;
         }
 
         void OnDisable()
         {
             if (placementZone != null)
+            {
                 placementZone.IngredientPlaced -= OnIngredientPlaced;
+                placementZone.IngredientsDiscarded -= OnIngredientsDiscarded;
+            }
             submittedIngredients.Clear();
         }
 
@@ -113,12 +117,11 @@ namespace SushiDojo.Cards
                 return;
             }
 
-            // Keep a partial combination only while either visible recipe can use it.
-            if (CanCompleteRecipe(CurrentRecipe) ||
-                (secondRecipe != null && CanCompleteRecipe(secondRecipe))) return;
+        }
 
-            Debug.LogWarning("Ingredients do not match either visible recipe; cleared the placement zone.", this);
-            ClearSubmittedIngredients();
+        void OnIngredientsDiscarded()
+        {
+            submittedIngredients.Clear();
         }
 
         bool MatchesRecipe(RecipeData recipe) =>
@@ -182,7 +185,7 @@ namespace SushiDojo.Cards
         {
             submittedIngredients.Clear();
             if (placementZone != null)
-                placementZone.ClearPlacedIngredients();
+                placementZone.ConsumePlacedIngredients();
         }
 
         IEnumerator CompleteTopRecipeRoutine()

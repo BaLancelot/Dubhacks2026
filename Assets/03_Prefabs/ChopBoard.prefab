@@ -608,6 +608,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldCamera: {fileID: 0}
+  ingredientPrefab: {fileID: 11400001, guid: c80570134bfa4e55a3137597603409bf, type: 3}
+  discardTrigger: {fileID: 790002}
 --- !u!223 &760003
 Canvas:
   m_ObjectHideFlags: 0

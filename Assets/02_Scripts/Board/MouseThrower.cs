@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using SushiDojo.Cards;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace SushiDojo.Board
 {
@@ -14,6 +17,8 @@ namespace SushiDojo.Board
         [SerializeField] Camera targetCamera;
         [Tooltip("The tilted table frame. Held bodies move on a plane above it. Falls back to this transform.")]
         [SerializeField] Transform table;
+        [Tooltip("When assigned, released throws are aimed toward this character.")]
+        [SerializeField] Transform throwTarget;
         [Tooltip("Height of the carry plane above the table origin (table local Y).")]
         [SerializeField] float holdHeight = 1f;
         [SerializeField] LayerMask grabMask = Physics.DefaultRaycastLayers;
@@ -22,6 +27,7 @@ namespace SushiDojo.Board
         [SerializeField, Min(0.01f)] float velocityWindow = 0.08f;
 
         readonly Queue<(float time, Vector3 point)> samples = new();
+        readonly List<RaycastResult> uiRaycastResults = new();
         ThrowableBody held;
         Vector3 grabOffset;
         Vector3 lastPlanePoint;
@@ -39,7 +45,9 @@ namespace SushiDojo.Board
 
             if (held == null)
             {
-                if (mouse.leftButton.wasPressedThisFrame) TryGrab(ray);
+                if (mouse.leftButton.wasPressedThisFrame &&
+                    !IsPointerOverUI(mouse.position.ReadValue()))
+                    TryGrab(ray);
                 return;
             }
 
@@ -49,7 +57,7 @@ namespace SushiDojo.Board
 
             if (mouse.leftButton.wasReleasedThisFrame || !mouse.leftButton.isPressed)
             {
-                held.Release(EstimateVelocity());
+                held.Release(AimAtTarget(EstimateVelocity()));
                 held = null;
             }
         }
@@ -67,6 +75,41 @@ namespace SushiDojo.Board
             samples.Clear();
             held.Grab(planePoint + grabOffset);
             RecordSample(planePoint + grabOffset);
+        }
+
+        Vector3 AimAtTarget(Vector3 velocity)
+        {
+            if (throwTarget == null) return velocity;
+
+            Vector3 direction = Vector3.ProjectOnPlane(
+                throwTarget.position - held.transform.position,
+                Table.up);
+            if (direction.sqrMagnitude <= 1e-4f) return velocity;
+
+            float speed = velocity.magnitude;
+            return direction.normalized * speed;
+        }
+
+        bool IsPointerOverUI(Vector2 screenPosition)
+        {
+            EventSystem eventSystem = EventSystem.current;
+            if (eventSystem == null) return false;
+
+            var pointerData = new PointerEventData(eventSystem)
+            {
+                position = screenPosition
+            };
+            uiRaycastResults.Clear();
+            eventSystem.RaycastAll(pointerData, uiRaycastResults);
+
+            foreach (RaycastResult result in uiRaycastResults)
+            {
+                if (result.module is GraphicRaycaster &&
+                    result.gameObject.GetComponentInParent<IngredientCardUI>() != null)
+                    return true;
+            }
+
+            return false;
         }
 
         Vector3 PointOnHoldPlane(Ray ray)
