@@ -15,4 +15,4 @@ MonoBehaviour:
   id: tuna
   displayName: Tuna
   sprite: {fileID: 21300000, guid: a9581bf94f5f3f0468e6885859cf5db7, type: 3}
-  spawnWeight: 1
+  spawnWeight: 0.8

@@ -54,6 +54,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9c744680cc834039bd22cc093868f878, type: 2}
   - {fileID: 11400000, guid: b174f6dadbb4429cbce57e9da16cad93, type: 2}
   - {fileID: 11400000, guid: c9d2cae4d5ef4ad4924b88e99d9112e4, type: 2}
+  - {fileID: 11400000, guid: dc0ac6f699ac56d74411557b0a17f4e6, type: 2}
+  - {fileID: 11400000, guid: 321ef1f257de6ae43b0d91f024b36ce5, type: 2}
+  - {fileID: 11400000, guid: 6fa88dc646321e2141e694a195d2d83e, type: 2}
+  - {fileID: 11400000, guid: f736235eb8b2ce2ebc955ee14d21064a, type: 2}
+  - {fileID: 11400000, guid: 981cbc980a086057c8c98797c57d99bd, type: 2}
+  - {fileID: 11400000, guid: bb6a5f9e3ec437f43c4422a4810bb769, type: 2}
+  - {fileID: 11400000, guid: 5a9db8ce12c5217c544f199ef13055ea, type: 2}
+  - {fileID: 11400000, guid: 16c5bb683ab999d222f49f5f60fa4635, type: 2}
+  - {fileID: 11400000, guid: 304c161d87adf37ae8cf9e0e42054587, type: 2}
+  - {fileID: 11400000, guid: 048e4ece1ac29012449744ce0f04e465, type: 2}
+  - {fileID: 11400000, guid: 120399449cf53e70bcf21d156e5591f0, type: 2}
+  - {fileID: 11400000, guid: 1a26fc42a4cc70ea23edd83f4d65a28d, type: 2}
+  - {fileID: 11400000, guid: 259fe62381912ecfa28d434306ddec0e, type: 2}
+  - {fileID: 11400000, guid: cca23bac8fb9863c04a22d07a2302865, type: 2}
+  - {fileID: 11400000, guid: 316873691d06e5f88d95ad85edf283e4, type: 2}
+  - {fileID: 11400000, guid: 97570502e991ea621b8b9a816fe54949, type: 2}
   sideSlotCount: 2
   slotSpacing: 1.5
   beltBackground: {fileID: 700002}
@@ -93,6 +109,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  keepRevealedAfterCenter: 1
   spawnEveryNSteps: 1
   prefillOnStart: 1
   runOnStart: 1
@@ -112,6 +129,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   belt: {fileID: 600001}
   takeKey: 1
+  playerId: 0
   logReveals: 1
 --- !u!1 &200002
 GameObject:
@@ -147,6 +165,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &700002
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -162,6 +181,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -183,9 +207,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: -1
+  m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: b43d971bb8b445bc8b3698ed446d52af, type: 3}
   m_Color: {r: 0.25, g: 0.25, b: 0.28, a: 1}
   m_FlipX: 0
@@ -195,7 +221,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &200003
 GameObject:

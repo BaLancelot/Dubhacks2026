@@ -15,4 +15,4 @@ MonoBehaviour:
   id: rice
   displayName: Rice
   sprite: {fileID: 21300000, guid: 8a01bc81a51eeb743837d0ee750402dc, type: 3}
-  spawnWeight: 1
+  spawnWeight: 2

@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400001}
+  - component: {fileID: 11400001}
+  m_Layer: 5
+  m_Name: RecipeQueue
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &400001
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 190, y: -140}
+  m_SizeDelta: {x: 360, y: 250}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &11400001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 100001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93a5c8e2f5644ad093f6b6c41d2b87a9, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  cardPrefab: {fileID: 11400001, guid: 58e4e1ba25d94bb6a0e25d3add925271, type: 3}
+  recipeDeck:
+  - {fileID: 11400000, guid: c0bfb04762101c3e685d3f216c87d6cd, type: 2}
+  - {fileID: 11400000, guid: eb3fd84adfad21d03d255aa848fd241c, type: 2}
+  - {fileID: 11400000, guid: 18682c70fb020feb567d6bcfef0a62cc, type: 2}
+  - {fileID: 11400000, guid: fd1c7b7b135ad252add5a0e722ed5138, type: 2}
+  - {fileID: 11400000, guid: a1fad0560397ad669b293e2f57ac918e, type: 2}
+  - {fileID: 11400000, guid: e48aac465e48c910623c7700e1230681, type: 2}
+  - {fileID: 11400000, guid: beaa69f598a7271b126a92b22684feb8, type: 2}
+  - {fileID: 11400000, guid: 24b0909b93a12d022f62b2cfde5a5e0c, type: 2}
+  - {fileID: 11400000, guid: 5a91a7e452ba4be1bcd75b1e3a0ca693, type: 2}
+  cardSpacing: 160
+  cardScale: 0.65
+  animationDuration: 0.35
+  exitDistance: 190

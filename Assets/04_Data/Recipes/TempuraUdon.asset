@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1b9037db13545b4baaa09cf26f8c453, type: 3}
+  m_Name: TempuraUdon
+  m_EditorClassIdentifier: 
+  displayName: Tempura Udon
+  foodSprite: {fileID: 0}
+  ingredients:
+  - {fileID: 11400000, guid: 5a9db8ce12c5217c544f199ef13055ea, type: 2}
+  - {fileID: 11400000, guid: 6fa88dc646321e2141e694a195d2d83e, type: 2}
+  - {fileID: 11400000, guid: 16c5bb683ab999d222f49f5f60fa4635, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
