@@ -1,7 +1,10 @@
 
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using Unity.Services.Core;
 using Unity.Services.Authentication;
 using Unity.Services.Multiplayer;
@@ -9,6 +12,7 @@ using Unity.Services.Multiplayer;
 public class SushiMultiplayer : MonoBehaviour
 {
     [SerializeField] private NetworkConveyor networkConveyor;
+    [SerializeField] private NetworkMatchTimer matchTimer;
 
     private ISession session;
     private string joinCode = "";
@@ -16,12 +20,43 @@ public class SushiMultiplayer : MonoBehaviour
     private bool servicesReady;
     private bool operationInProgress;
     private NetworkManager observedManager;
+    private string gameplayScenePath;
+    private bool returningToLobby;
+    private bool rematchLoading;
+    private NetworkSceneManager rematchSceneManager;
+
+    void Awake()
+    {
+        // Give both local player instances a bounded rendering budget.
+        // Uncapped Game views compete for the same CPU/GPU in Multiplayer Play Mode.
+        Application.targetFrameRate = 60;
+        Application.runInBackground = true;
+    }
 
     private bool CanConnect => servicesReady && !operationInProgress && session == null &&
-        (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening);
+        (NetworkManager.Singleton == null ||
+         (!NetworkManager.Singleton.IsListening && !NetworkManager.Singleton.ShutdownInProgress));
+
+    private void ConfigureTransport()
+    {
+        Application.runInBackground = true;
+        NetworkManager manager = NetworkManager.Singleton;
+        if (manager == null || manager.IsListening) return;
+        if (manager.NetworkConfig.NetworkTransport is UnityTransport transport)
+        {
+            // Virtual-player windows can process accumulated packets in bursts.
+            // The default 128-packet queue overflowed before Relay disconnected.
+            transport.MaxPacketQueueSize = Math.Max(transport.MaxPacketQueueSize, 1024);
+        }
+    }
 
     void Update()
     {
+        // This manager survives the synchronized rematch scene load.
+        if (networkConveyor == null)
+            networkConveyor = FindFirstObjectByType<NetworkConveyor>();
+        if (matchTimer == null)
+            matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
         if (observedManager == NetworkManager.Singleton) return;
         UnsubscribeNetworkEvents();
         observedManager = NetworkManager.Singleton;
@@ -30,7 +65,54 @@ public class SushiMultiplayer : MonoBehaviour
         observedManager.OnClientDisconnectCallback += HandleDisconnected;
     }
 
-    void OnDestroy() => UnsubscribeNetworkEvents();
+    void OnDestroy()
+    {
+        UnsubscribeNetworkEvents();
+        if (rematchSceneManager != null)
+            rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
+    }
+
+    public void StartRematch()
+    {
+        NetworkManager manager = NetworkManager.Singleton;
+        if (manager == null || !manager.IsServer || rematchLoading || operationInProgress) return;
+        if (matchTimer == null || !matchTimer.HasMatchEnded) return;
+
+        rematchLoading = true;
+        operationInProgress = true;
+        status = "Both players ready. Loading next match...";
+        rematchSceneManager = manager.SceneManager;
+        rematchSceneManager.OnSceneEvent += HandleRematchSceneEvent;
+        SceneEventProgressStatus result = rematchSceneManager.LoadScene(gameplayScenePath, LoadSceneMode.Single);
+        if (result != SceneEventProgressStatus.Started)
+        {
+            rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
+            rematchLoading = false;
+            operationInProgress = false;
+            status = $"Could not load next match: {result}. Return to Lobby to retry.";
+            Debug.LogError(status);
+        }
+    }
+
+    private void HandleRematchSceneEvent(SceneEvent sceneEvent)
+    {
+        if (!rematchLoading || sceneEvent.SceneEventType != SceneEventType.LoadEventCompleted) return;
+        rematchSceneManager.OnSceneEvent -= HandleRematchSceneEvent;
+        rematchLoading = false;
+        operationInProgress = false;
+        networkConveyor = FindFirstObjectByType<NetworkConveyor>();
+        matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+
+        if (sceneEvent.ClientsThatTimedOut.Count != 0 || sceneEvent.ClientsThatCompleted.Count != 2 ||
+            NetworkManager.Singleton.ConnectedClientsIds.Count != 2 || matchTimer == null)
+        {
+            status = "A player did not finish loading. Return to Lobby to retry.";
+            return;
+        }
+
+        matchTimer.StartMatch();
+        status = "Next match started!";
+    }
 
     void UnsubscribeNetworkEvents()
     {
@@ -47,6 +129,7 @@ public class SushiMultiplayer : MonoBehaviour
 
     void HandleDisconnected(ulong clientId)
     {
+        if (returningToLobby) return;
         if (observedManager == null || clientId != observedManager.LocalClientId) return;
         status = "Network disconnected. Leave Room before retrying.";
         Debug.LogWarning($"Network disconnected: {observedManager.DisconnectReason}");
@@ -54,6 +137,11 @@ public class SushiMultiplayer : MonoBehaviour
 
     async void Start()
     {
+        gameplayScenePath = networkConveyor != null
+            ? networkConveyor.gameObject.scene.path
+            : SceneManager.GetActiveScene().path;
+        if (matchTimer == null)
+            matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
         try
         {
             await UnityServices.InitializeAsync();
@@ -77,6 +165,7 @@ public class SushiMultiplayer : MonoBehaviour
     public async void HostGame()
     {
         if (!CanConnect) return;
+        ConfigureTransport();
         operationInProgress = true;
         status = "Creating room...";
         try
@@ -103,6 +192,7 @@ public class SushiMultiplayer : MonoBehaviour
     public async void JoinGame(string code)
     {
         if (!CanConnect) return;
+        ConfigureTransport();
         code = code?.Trim();
         if (string.IsNullOrEmpty(code))
         {
@@ -132,22 +222,53 @@ public class SushiMultiplayer : MonoBehaviour
     public async void LeaveRoom()
     {
         if (operationInProgress) return;
+        // Leaving is available before a match or after it finishes/disconnects.
+        if (matchTimer != null && matchTimer.IsMatchRunning &&
+            NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient)
+            return;
         operationInProgress = true;
+        returningToLobby = true;
         status = "Leaving room...";
         try
         {
-            if (session != null) await session.LeaveAsync();
+            // Capture the gameplay scene before disposing the persistent network manager.
+            string scenePath = gameplayScenePath;
+            if (string.IsNullOrEmpty(scenePath))
+                throw new InvalidOperationException("Cannot return to lobby: gameplay scene is unknown.");
+
+            if (session != null && session.State != SessionState.Deleted)
+                await session.LeaveAsync();
             session = null;
-            if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
-                NetworkManager.Singleton.Shutdown();
-            status = "Left room. Ready to host or join";
+            NetworkManager manager = NetworkManager.Singleton;
+            if (manager != null)
+            {
+                if (manager.IsListening && !manager.ShutdownInProgress)
+                    manager.Shutdown();
+
+                // Shutdown completes on a subsequent frame. Starting another session
+                // sooner can reuse the old transport and network object registrations.
+                while (manager != null && (manager.IsListening || manager.ShutdownInProgress))
+                    await Task.Yield();
+
+                UnsubscribeNetworkEvents();
+                if (manager != null) Destroy(manager.gameObject);
+                await Task.Yield();
+            }
+
+            // Recreate the timer, scoreboard, conveyor, recipes and hand together.
+            // NetworkManager persists across scene loads, so it must be removed above.
+            await SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Single);
         }
         catch (Exception e)
         {
             Debug.LogError($"Leaving failed: {e}");
             status = "Failed to leave room. Try Leave Room again.";
         }
-        finally { operationInProgress = false; }
+        finally
+        {
+            operationInProgress = false;
+            returningToLobby = false;
+        }
     }
 
     void OnGUI()
@@ -175,10 +296,14 @@ public class SushiMultiplayer : MonoBehaviour
         }
         GUI.enabled = previousEnabled;
 
-        if (session != null)
+        bool matchFinished = matchTimer != null && matchTimer.HasMatchEnded;
+        bool disconnected = session != null && NetworkManager.Singleton != null &&
+            !NetworkManager.Singleton.IsConnectedClient && !operationInProgress;
+        if (session != null && (matchTimer == null || !matchTimer.HasMatchStarted || matchFinished || disconnected))
         {
             GUI.enabled = previousEnabled && !operationInProgress;
-            if (GUILayout.Button("Leave Room")) LeaveRoom();
+            if (GUILayout.Button(matchFinished || disconnected ? "Return to Lobby" : "Leave Room"))
+                LeaveRoom();
             GUI.enabled = previousEnabled;
         }
 
@@ -192,19 +317,6 @@ public class SushiMultiplayer : MonoBehaviour
         GUILayout.Label("Status: " + status);
 
         GUILayout.Space(10);
-
-        // Ingredient claiming
-        if (GUILayout.Button("Claim Ingredient", GUILayout.Height(40)))
-        {
-            if (networkConveyor != null)
-            {
-                networkConveyor.RequestTakeIngredient();
-            }
-            else
-            {
-                Debug.LogWarning("NetworkConveyor is not assigned!");
-            }
-        }
 
         if (networkConveyor != null && networkConveyor.IsSpawned)
         {

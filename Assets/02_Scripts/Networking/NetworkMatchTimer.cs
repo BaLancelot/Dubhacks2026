@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using SushiDojo.Conveyor;
@@ -21,8 +22,13 @@ public class NetworkMatchTimer : NetworkBehaviour
     //  1 = Host wins
     //  2 = Client wins
     private NetworkVariable<int> winner = new(-1);
+    private NetworkVariable<int> replayVotes = new(0);
+    private readonly HashSet<ulong> replayVoters = new();
+    private bool localReplayRequested;
 
     public event Action OnMatchEnded;
+
+    public bool HasMatchStarted => IsSpawned && matchStarted.Value;
 
     public bool HasMatchEnded =>
         IsSpawned && matchEnded.Value;
@@ -55,6 +61,8 @@ public class NetworkMatchTimer : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         matchEnded.OnValueChanged += OnEndStateChanged;
+        if (IsServer)
+            NetworkManager.OnClientDisconnectCallback += RemoveReplayVote;
 
         if (matchEnded.Value)
             OnMatchEnded?.Invoke();
@@ -63,6 +71,29 @@ public class NetworkMatchTimer : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         matchEnded.OnValueChanged -= OnEndStateChanged;
+        if (NetworkManager != null)
+            NetworkManager.OnClientDisconnectCallback -= RemoveReplayVote;
+    }
+
+    private void RemoveReplayVote(ulong clientId)
+    {
+        if (replayVoters.Remove(clientId)) replayVotes.Value = replayVoters.Count;
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    private void VotePlayAgainRpc(RpcParams rpcParams = default)
+    {
+        ulong sender = rpcParams.Receive.SenderClientId;
+        if (!HasMatchEnded || !NetworkManager.ConnectedClients.ContainsKey(sender)) return;
+        replayVoters.Add(sender);
+        replayVotes.Value = replayVoters.Count;
+
+        if (NetworkManager.ConnectedClientsIds.Count != 2 || replayVoters.Count != 2) return;
+        foreach (ulong player in NetworkManager.ConnectedClientsIds)
+            if (!replayVoters.Contains(player)) return;
+
+        SushiMultiplayer multiplayer = NetworkManager.GetComponent<SushiMultiplayer>();
+        if (multiplayer != null) multiplayer.StartRematch();
     }
 
     public void StartMatch()
@@ -155,7 +186,7 @@ public class NetworkMatchTimer : NetworkBehaviour
             return;
 
         GUILayout.BeginArea(
-            new Rect(Screen.width / 2f - 110, 15, 220, 160)
+            new Rect(Screen.width / 2f - 110, 15, 220, 230)
         );
 
         if (!matchStarted.Value)
@@ -186,6 +217,16 @@ public class NetworkMatchTimer : NetworkBehaviour
                     $"{scoreboard.ClientScore.Value}"
                 );
             }
+
+            GUILayout.Label($"Play again: {replayVotes.Value}/2 players");
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && IsClient && !localReplayRequested;
+            if (GUILayout.Button(localReplayRequested ? "Waiting for other player..." : "Play Again"))
+            {
+                localReplayRequested = true;
+                VotePlayAgainRpc();
+            }
+            GUI.enabled = previousEnabled;
         }
         else
         {

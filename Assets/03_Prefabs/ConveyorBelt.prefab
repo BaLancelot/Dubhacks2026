@@ -116,7 +116,7 @@ MonoBehaviour:
   belt: {fileID: 600001}
   takeKey: 1
   playerId: 0
-  logReveals: 1
+  logReveals: 0
 --- !u!1 &200003
 GameObject:
   m_ObjectHideFlags: 0
