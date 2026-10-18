@@ -104,12 +104,6 @@ namespace SushiDojo.Conveyor
 
         void Start()
         {
-            Debug.LogError(
-    $"CONVEYOR START: {gameObject.name}, " +
-    $"RunOnStart={runOnStart}, " +
-    $"PrefillOnStart={prefillOnStart}",
-    this
-);
             rng = useFixedSeed
                 ? new System.Random(seed)
                 : new System.Random();
@@ -148,12 +142,6 @@ namespace SushiDojo.Conveyor
 
         public void StartBelt()
 {
-    Debug.LogError(
-        $"STARTBELT CALLED on {gameObject.name}!\n" +
-        Environment.StackTrace,
-        this
-    );
-
     if (IsRunning)
         return;
 
