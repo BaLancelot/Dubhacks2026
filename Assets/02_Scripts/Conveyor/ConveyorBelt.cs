@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using SushiDojo.Cards;
 using SushiDojo.Ingredients;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -62,6 +63,14 @@ namespace SushiDojo.Conveyor
         [SerializeField] bool useFixedSeed;
         [SerializeField] int seed;
 
+        [Header("Spawn Weights")]
+        [Tooltip("Boost for ingredients that appear often across all recipe decks. Usually leave at 0 — active recipes already cover staples.")]
+        [SerializeField, Min(0f)] float globalFrequencyBoost = 0f;
+        [Tooltip("Base active boost; scaled up for harder recipes (3→0.7x, 4→1x, 5→1.25x, 6→1.55x). Shared needs use max hardness, not sum.")]
+        [SerializeField, Min(0f)] float activeRecipeBoost = 1.0f;
+        [Tooltip("0 = pure recipe/base weighting. Higher = more random (blend toward equal odds per ingredient).")]
+        [SerializeField, Range(0f, 1f)] float diversityMix = 0.4f;
+
         public event Action OnStepStarted;
         public event Action<IngredientData> OnCenterRevealed;
         /// <summary>(playerId, ingredient) — fired when a player takes the center ingredient.</summary>
@@ -99,9 +108,24 @@ namespace SushiDojo.Conveyor
         // Client-side animation.
         Coroutine remoteMovement;
 
+        readonly Dictionary<IngredientData, int> globalFrequencies = new();
+        readonly Dictionary<IngredientData, int> activeHardness = new();
+        readonly List<RecipeQueueView> boundQueues = new();
+        int maxGlobalFrequency;
+
         void Awake()
         {
             ApplyBodyLength();
+        }
+
+        void OnEnable()
+        {
+            BindRecipeQueues();
+        }
+
+        void OnDisable()
+        {
+            UnbindRecipeQueues();
         }
 
         void Start()
@@ -112,6 +136,9 @@ namespace SushiDojo.Conveyor
 
             lane = new BeltItem[LaneLength];
             moveFrom = new Vector3[LaneLength];
+
+            BindRecipeQueues();
+            RefreshSpawnWeights();
 
             if (TotalSpawnWeight() <= 0f)
             {
@@ -126,6 +153,68 @@ namespace SushiDojo.Conveyor
 
             if (runOnStart)
                 StartBelt();
+        }
+
+        void BindRecipeQueues()
+        {
+            UnbindRecipeQueues();
+            RecipeQueueView[] queues = FindObjectsByType<RecipeQueueView>(
+                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            foreach (RecipeQueueView queue in queues)
+            {
+                boundQueues.Add(queue);
+                queue.RecipeQueueChanged += RefreshSpawnWeights;
+            }
+        }
+
+        void UnbindRecipeQueues()
+        {
+            foreach (RecipeQueueView queue in boundQueues)
+            {
+                if (queue != null)
+                    queue.RecipeQueueChanged -= RefreshSpawnWeights;
+            }
+            boundQueues.Clear();
+        }
+
+        void EnsureRecipeQueuesBound()
+        {
+            RecipeQueueView[] queues = FindObjectsByType<RecipeQueueView>(
+                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (queues.Length == boundQueues.Count)
+            {
+                bool allBound = true;
+                foreach (RecipeQueueView queue in queues)
+                {
+                    if (boundQueues.Contains(queue)) continue;
+                    allBound = false;
+                    break;
+                }
+                if (allBound) return;
+            }
+
+            BindRecipeQueues();
+        }
+
+        void RefreshSpawnWeights()
+        {
+            RecipeIngredientWeights.CollectAllQueues(globalFrequencies, activeHardness);
+            maxGlobalFrequency = RecipeIngredientWeights.MaxFrequency(globalFrequencies);
+        }
+
+        float EffectiveSpawnWeight(IngredientData data)
+        {
+            if (data == null) return 0f;
+            globalFrequencies.TryGetValue(data, out int globalCount);
+            activeHardness.TryGetValue(data, out int hardness);
+            return RecipeIngredientWeights.EffectiveWeight(
+                data.SpawnWeight,
+                globalCount,
+                maxGlobalFrequency,
+                hardness,
+                globalFrequencyBoost,
+                activeRecipeBoost,
+                diversityMix);
         }
 
         void Update()
@@ -554,6 +643,10 @@ namespace SushiDojo.Conveyor
 
         IngredientData PickIngredient()
         {
+            // Queues can appear after the belt (network UI spawn); keep bindings fresh.
+            EnsureRecipeQueuesBound();
+            RefreshSpawnWeights();
+
             float total = TotalSpawnWeight();
 
             if (total <= 0f)
@@ -564,11 +657,12 @@ namespace SushiDojo.Conveyor
 
             foreach (IngredientData data in ingredients)
             {
-                if (data == null || data.SpawnWeight <= 0f)
+                float weight = EffectiveSpawnWeight(data);
+                if (data == null || weight <= 0f)
                     continue;
 
                 lastValid = data;
-                roll -= data.SpawnWeight;
+                roll -= weight;
 
                 if (roll < 0d)
                     return data;
@@ -582,10 +676,7 @@ namespace SushiDojo.Conveyor
             float total = 0f;
 
             foreach (IngredientData data in ingredients)
-            {
-                if (data != null)
-                    total += data.SpawnWeight;
-            }
+                total += EffectiveSpawnWeight(data);
 
             return total;
         }

@@ -15,4 +15,4 @@ MonoBehaviour:
   id: broth
   displayName: Broth
   sprite: {fileID: 21300000, guid: b3a0212149f8c764ea72066facb021c5, type: 3}
-  spawnWeight: 0.5
+  spawnWeight: 0.8

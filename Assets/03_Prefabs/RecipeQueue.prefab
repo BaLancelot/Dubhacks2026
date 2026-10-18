@@ -59,6 +59,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: beaa69f598a7271b126a92b22684feb8, type: 2}
   - {fileID: 11400000, guid: 24b0909b93a12d022f62b2cfde5a5e0c, type: 2}
   - {fileID: 11400000, guid: 5a91a7e452ba4be1bcd75b1e3a0ca693, type: 2}
+  - {fileID: 11400000, guid: 69477d4942344f62b515a75218fc0213, type: 2}
+  - {fileID: 11400000, guid: 819e46c8621749339047829b67c10f01, type: 2}
+  - {fileID: 11400000, guid: de5f122e3aa24905acd80953dd2eff8e, type: 2}
+  - {fileID: 11400000, guid: d7645aca01044824af877f357a6d8ad0, type: 2}
   cardSpacing: 160
   cardScale: 0.65
   animationDuration: 0.35

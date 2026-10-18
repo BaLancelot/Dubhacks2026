@@ -15,4 +15,4 @@ MonoBehaviour:
   id: udon_noodles
   displayName: Udon Noodles
   sprite: {fileID: 21300000, guid: bfb009366c5a2e44d91189b40e9e4275, type: 3}
-  spawnWeight: 0.5
+  spawnWeight: 0.8

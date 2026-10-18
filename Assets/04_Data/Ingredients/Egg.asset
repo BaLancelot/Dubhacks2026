@@ -15,4 +15,4 @@ MonoBehaviour:
   id: egg
   displayName: Egg
   sprite: {fileID: 21300000, guid: 1e6088e4e6c14334493029d1a73089a0, type: 3}
-  spawnWeight: 1.2
+  spawnWeight: 0.95

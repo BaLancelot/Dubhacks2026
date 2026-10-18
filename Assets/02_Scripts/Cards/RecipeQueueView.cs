@@ -33,9 +33,17 @@ namespace SushiDojo.Cards
         bool isAnimating;
 
         public event Action<RecipeData> RecipeCompleted;
+        /// <summary>Fired when the visible current/next recipes change (after shuffle or a completion).</summary>
+        public event Action RecipeQueueChanged;
 
         public RecipeData CurrentRecipe =>
             currentIndex < recipeDeck.Length ? recipeDeck[currentIndex] : null;
+
+        public RecipeData NextRecipe =>
+            currentIndex + 1 < recipeDeck.Length ? recipeDeck[currentIndex + 1] : null;
+
+        /// <summary>Remaining recipes in deck order (including current).</summary>
+        public IReadOnlyList<RecipeData> DeckRecipes => recipeDeck;
 
         void Awake()
         {
@@ -70,24 +78,74 @@ namespace SushiDojo.Cards
             }
 
             recipeDeck = (RecipeData[])recipeDeck.Clone();
-            ShuffleRecipeDeck();
+            ShuffleRecipeDeckWeighted();
             topCard = Instantiate(cardPrefab, transform, false);
             nextCard = Instantiate(cardPrefab, transform, false);
             PositionCard(topCard, TopSlotPosition);
             PositionCard(nextCard, NextSlotPosition);
             RefreshCards();
+            RecipeQueueChanged?.Invoke();
             Debug.Log($"[RecipeQueue] Ready in {gameObject.scene.name}; recipes={recipeDeck.Length}.", this);
         }
 
-        void ShuffleRecipeDeck()
+        /// <summary>
+        /// Tier percentages (3→40%, 4→25%, 5→20%, 6+→15%), then uniform within the chosen tier.
+        /// Empty tiers redistribute their share among remaining tiers.
+        /// </summary>
+        void ShuffleRecipeDeckWeighted()
         {
             var random = new System.Random(Guid.NewGuid().GetHashCode());
-            for (int i = recipeDeck.Length - 1; i > 0; i--)
+            var remaining = new List<RecipeData>(recipeDeck);
+            for (int write = 0; write < recipeDeck.Length; write++)
             {
-                int swapIndex = random.Next(i + 1);
-                (recipeDeck[i], recipeDeck[swapIndex]) =
-                    (recipeDeck[swapIndex], recipeDeck[i]);
+                int tier = PickRecipeTier(remaining, random);
+                int pick = -1;
+                int tierCount = 0;
+                for (int i = 0; i < remaining.Count; i++)
+                {
+                    if (RecipeTier(remaining[i]) != tier) continue;
+                    tierCount++;
+                    if (random.Next(tierCount) == 0)
+                        pick = i;
+                }
+
+                if (pick < 0) pick = remaining.Count - 1;
+                recipeDeck[write] = remaining[pick];
+                remaining.RemoveAt(pick);
             }
+        }
+
+        static int PickRecipeTier(List<RecipeData> remaining, System.Random random)
+        {
+            float w3 = 0f, w4 = 0f, w5 = 0f, w6 = 0f;
+            foreach (RecipeData recipe in remaining)
+            {
+                switch (RecipeTier(recipe))
+                {
+                    case 3: w3 = 0.4f; break;
+                    case 4: w4 = 0.25f; break;
+                    case 5: w5 = 0.2f; break;
+                    default: w6 = 0.15f; break;
+                }
+            }
+
+            float total = w3 + w4 + w5 + w6;
+            if (total <= 0f) return 3;
+
+            double roll = random.NextDouble() * total;
+            if ((roll -= w3) < 0d) return 3;
+            if ((roll -= w4) < 0d) return 4;
+            if ((roll -= w5) < 0d) return 5;
+            return 6;
+        }
+
+        static int RecipeTier(RecipeData recipe)
+        {
+            int count = RecipeIngredientWeights.CountIngredients(recipe);
+            if (count <= 3) return 3;
+            if (count == 4) return 4;
+            if (count == 5) return 5;
+            return 6;
         }
 
         void OnEnable()
@@ -218,6 +276,7 @@ namespace SushiDojo.Cards
         void NotifyRecipeCompleted(RecipeData recipe)
         {
             RecipeCompleted?.Invoke(recipe);
+            RecipeQueueChanged?.Invoke();
             NetworkScoreboard scoreboard = FindFirstObjectByType<NetworkScoreboard>();
             if (scoreboard != null)
                 scoreboard.RecordRecipeCompleted(CountRequiredIngredients(recipe));

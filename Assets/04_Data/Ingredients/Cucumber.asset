@@ -15,4 +15,4 @@ MonoBehaviour:
   id: cucumber
   displayName: Cucumber
   sprite: {fileID: 21300000, guid: c8019d788bcf7784dbb1743bd17b7767, type: 3}
-  spawnWeight: 0.7
+  spawnWeight: 0.9

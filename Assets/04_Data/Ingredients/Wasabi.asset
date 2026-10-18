@@ -15,4 +15,4 @@ MonoBehaviour:
   id: wasabi
   displayName: Wasabi
   sprite: {fileID: 21300000, guid: 13aaefe2fe0cb754e8320d54051f0b5a, type: 3}
-  spawnWeight: 0.7
+  spawnWeight: 0.9
