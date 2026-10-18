@@ -21,6 +21,7 @@ namespace SushiDojo.Menu
         [Header("Text")]
         [SerializeField] string hostWaitingMessage = "WAITING FOR PLAYER";
         [SerializeField] string guestWaitingMessage = "WAITING FOR HOST";
+        [SerializeField] string hostReadyMessage = "PRESS START";
         [Tooltip("Seconds per animated dot.")]
         [SerializeField, Min(0.05f)] float dotInterval = 0.4f;
 
@@ -45,7 +46,7 @@ namespace SushiDojo.Menu
         {
             networkStatus = message;
             networkBusy = busy;
-            waitingText.enabled = busy || !OpponentJoined || !IsHost;
+            waitingText.enabled = true;
             startButton.interactable = IsHost && OpponentJoined && !busy;
         }
 
@@ -98,13 +99,26 @@ namespace SushiDojo.Menu
         {
             if (waitingText.enabled)
             {
-                int dots = Mathf.FloorToInt(Time.time / dotInterval) % 4;
-                // Give the room-code text a rendered frame before announcing that the room is ready.
-                bool codeDisplayed = hasRoomCode && Time.frameCount > roomCodeSetFrame;
-                string message = !string.IsNullOrEmpty(networkStatus) && networkBusy
-                    ? networkStatus : IsHost && !codeDisplayed
-                        ? "Creating room" : IsHost ? hostWaitingMessage : guestWaitingMessage;
-                waitingText.text = message.TrimEnd('.') + new string('.', dots);
+                if (networkBusy && networkStatus == "Loading match...")
+                {
+                    waitingText.enabled = false;
+                }
+                else
+                {
+                    int dots = Mathf.FloorToInt(Time.time / dotInterval) % 4;
+                    // Give the room-code text a rendered frame before announcing that the room is ready.
+                    bool codeDisplayed = hasRoomCode && Time.frameCount > roomCodeSetFrame;
+                    string message;
+                    if (!string.IsNullOrEmpty(networkStatus) && networkBusy)
+                        message = networkStatus;
+                    else if (IsHost && !codeDisplayed)
+                        message = "Creating room";
+                    else if (IsHost)
+                        message = OpponentJoined ? hostReadyMessage : hostWaitingMessage;
+                    else
+                        message = guestWaitingMessage;
+                    waitingText.text = message.TrimEnd('.') + new string('.', dots);
+                }
             }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

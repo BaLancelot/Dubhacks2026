@@ -186,7 +186,7 @@ public class SushiMultiplayer : MonoBehaviour
         catch (Exception e)
         {
             status = code == null ? "Could not create room. Go back and retry." :
-                IsRoomFull(e) ? "Full!" : "Could not join room. Check the code and try again.";
+                IsRoomFull(e) ? "Full!" : "Could not join room.\nCheck the code and try again.";
             Debug.LogException(e);
             if (menu != null && code != null) menu.Join.ShowError(status);
             if (manager.IsListening && session == null) manager.Shutdown();

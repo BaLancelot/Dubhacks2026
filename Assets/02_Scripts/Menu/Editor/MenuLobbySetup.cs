@@ -102,7 +102,7 @@ namespace SushiDojo.Menu.EditorTools
             previewSo.ApplyModifiedPropertiesWithoutUndo();
 
             TMP_Text waiting = CreateText(root, "Waiting", "WAITING FOR PLAYER", 32, LightText, new Vector2(460f, 60f), -5f);
-            Button start = CreatePanelButton(root, "GameStart", "GAME START", 3, -215f);
+            Button start = CreatePanelButton(root, "GameStart", "START", 3, -215f);
             Button back = CreateTextButton(root, "Back", "BACK", -320f);
 
             var panel = root.gameObject.AddComponent<MenuLobbyPanel>();
@@ -201,7 +201,7 @@ namespace SushiDojo.Menu.EditorTools
             areaRect.offsetMin = new Vector2(30f, 10f);
             areaRect.offsetMax = new Vector2(-30f, -10f);
 
-            TMP_Text placeholder = CreateStretchedText(areaRect, "Placeholder", "ROOM CODE", 44,
+            TMP_Text placeholder = CreateStretchedText(areaRect, "Placeholder", "CODE", 44,
                 new Color(DarkText.r, DarkText.g, DarkText.b, 0.45f), Vector2.zero);
             TMP_Text text = CreateStretchedText(areaRect, "Text", "", 52, DarkText, Vector2.zero);
             text.richText = false;

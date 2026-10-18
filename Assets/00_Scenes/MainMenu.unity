@@ -1075,7 +1075,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: GAME START
+  m_text: START
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7e2847000dd9d0f44b55bb23d0d860b2, type: 2}
   m_sharedMaterial: {fileID: 8297397522022138364, guid: 7e2847000dd9d0f44b55bb23d0d860b2, type: 2}
@@ -1620,7 +1620,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -13}
   m_SizeDelta: {x: -60, y: -20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &583793485
@@ -3163,6 +3163,7 @@ MonoBehaviour:
   backButton: {fileID: 1580289179}
   hostWaitingMessage: WAITING FOR PLAYER
   guestWaitingMessage: WAITING FOR HOST
+  hostReadyMessage: PRESS START
   dotInterval: 0.4
   debugToggleOpponentKey: 24
 --- !u!224 &993743248
@@ -3237,7 +3238,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 109}
+  m_AnchoredPosition: {x: 0, y: 120.7}
   m_SizeDelta: {x: 460, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1141994394
@@ -4548,7 +4549,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: ROOM CODE
+  m_text: CODE
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7e2847000dd9d0f44b55bb23d0d860b2, type: 2}
   m_sharedMaterial: {fileID: 8297397522022138364, guid: 7e2847000dd9d0f44b55bb23d0d860b2, type: 2}
@@ -4578,9 +4579,9 @@ MonoBehaviour:
   m_fontSize: 52
   m_fontSizeBase: 52
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_fontSizeMax: 52
   m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -4614,7 +4615,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 8, y: 0, z: 8, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -5501,7 +5502,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -14}
   m_SizeDelta: {x: -60, y: -20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1724442995
