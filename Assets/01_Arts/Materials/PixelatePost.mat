@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _ColorSteps: 0
-    - _VerticalResolution: 1080
+    - _VerticalResolution: 480
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

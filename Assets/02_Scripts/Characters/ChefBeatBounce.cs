@@ -58,8 +58,7 @@ namespace SushiDojo.Characters
 
         void Update()
         {
-            float time = SoundManager.TryGetBgmTime(out float bgmTime) ? bgmTime : Time.time;
-            int beat = Mathf.FloorToInt((time - firstBeatTime) * bpm / 60f / beatsPerJiggle);
+            int beat = Mathf.FloorToInt(BeatClock.Beats(bpm, firstBeatTime) / beatsPerJiggle);
             if (beat == lastBeat) return;
 
             bool first = lastBeat == int.MinValue;

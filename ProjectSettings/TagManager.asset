@@ -38,6 +38,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: StageBackground
+    uniqueID: 2000078012
+    locked: 0
   - name: Back
     uniqueID: 694588269
     locked: 0
