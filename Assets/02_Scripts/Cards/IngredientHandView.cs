@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using SushiDojo.Ingredients;
 using UnityEngine;
@@ -25,6 +26,13 @@ namespace SushiDojo.Cards
         [SerializeField, Min(0f)] float cardShakeStrength = 14f;
         [SerializeField] Color rejectFlashColor = new(1f, 0.28f, 0.28f, 1f);
         [SerializeField, Range(0f, 1f)] float rejectFlashStrength = 0.7f;
+        [SerializeField, Min(0f)] float wasteStartDelay = 2f;
+        [SerializeField, Min(0.01f)] float wasteExitDuration = 0.45f;
+        [SerializeField, Min(0f)] float wasteExitDistance = 90f;
+        [SerializeField, Min(0f)] float wasteCardPause = 0.35f;
+        [SerializeField, Min(0f)] float wasteThrowDelay = 1f;
+        [SerializeField, Min(0f)] float wasteThrowHold = 4f;
+        [SerializeField, Min(0f)] float wasteSkipHold = 2f;
 
         readonly List<IngredientCardUI> cards = new();
         readonly Dictionary<IngredientCardUI, CardMotion> cardMotions = new();
@@ -38,6 +46,9 @@ namespace SushiDojo.Cards
         float handShakeTimer;
         float cardShakeTimer;
         IngredientCardUI shakingCard;
+        NetworkMatchTimer matchTimer;
+        bool settlingWaste;
+        bool wasteThrowStarted;
 
         struct GraphicColorSample
         {
@@ -71,16 +82,132 @@ namespace SushiDojo.Cards
                 networkConveyor = FindFirstObjectByType<NetworkConveyor>();
             if (networkConveyor != null)
                 networkConveyor.OnIngredientAwarded += HandleIngredientAwarded;
+            if (matchTimer == null)
+                matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+            if (matchTimer != null)
+            {
+                matchTimer.OnMatchSettling += BeginWasteSettle;
+                matchTimer.OnWasteThrow += HandleWasteThrow;
+            }
+            if (matchTimer != null && matchTimer.WasteThrowStarted)
+                wasteThrowStarted = true;
+            if (matchTimer != null && matchTimer.IsMatchSettling)
+                BeginWasteSettle();
         }
 
         void OnDisable()
         {
             if (networkConveyor != null)
                 networkConveyor.OnIngredientAwarded -= HandleIngredientAwarded;
+            if (matchTimer != null)
+            {
+                matchTimer.OnMatchSettling -= BeginWasteSettle;
+                matchTimer.OnWasteThrow -= HandleWasteThrow;
+            }
+        }
+
+        void HandleWasteThrow()
+        {
+            wasteThrowStarted = true;
+        }
+
+        void BeginWasteSettle()
+        {
+            if (!isActiveAndEnabled || settlingWaste) return;
+            settlingWaste = true;
+            draggedCard = null;
+            hoveredCard = null;
+            LayoutCards();
+            StartCoroutine(DiscardTrayAsWaste());
+        }
+
+        IEnumerator DiscardTrayAsWaste()
+        {
+            if (placementZone == null)
+                placementZone = FindFirstObjectByType<IngredientPlacementZone>();
+            if (matchTimer == null)
+                matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+
+            int placed = placementZone != null ? placementZone.PlacedCount : 0;
+            matchTimer?.NotifyWasteCount(cards.Count + placed);
+            while (matchTimer != null && !matchTimer.WastePlanReady && matchTimer.IsMatchSettling)
+                yield return null;
+
+            if (matchTimer != null && matchTimer.WastePlanSkipped)
+            {
+                if (wasteSkipHold > 0f)
+                    yield return new WaitForSecondsRealtime(wasteSkipHold);
+                settlingWaste = false;
+                matchTimer.NotifyLocalSettleComplete();
+                yield break;
+            }
+
+            if (wasteStartDelay > 0f)
+                yield return new WaitForSecondsRealtime(wasteStartDelay);
+
+            while (cards.Count > 0)
+            {
+                IngredientCardUI card = cards[cards.Count - 1];
+                cards.Remove(card);
+                cardMotions.Remove(card);
+                LayoutCards();
+                yield return SlideOut(card);
+                if (placementZone != null && card.Data != null)
+                    placementZone.PlaceForWaste(card.Data);
+                Destroy(card.gameObject);
+                if (wasteCardPause > 0f && cards.Count > 0)
+                    yield return new WaitForSecondsRealtime(wasteCardPause);
+            }
+
+            if (matchTimer == null)
+                matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+            if (matchTimer != null)
+            {
+                matchTimer.NotifyReadyToThrow();
+                while (!wasteThrowStarted && !matchTimer.WasteThrowStarted && matchTimer.IsMatchSettling)
+                    yield return null;
+            }
+
+            if (wasteThrowDelay > 0f)
+                yield return new WaitForSecondsRealtime(wasteThrowDelay);
+
+            if (placementZone != null && placementZone.HasPlacedIngredients)
+            {
+                placementZone.ThrowForWaste();
+                if (wasteThrowHold > 0f)
+                    yield return new WaitForSecondsRealtime(wasteThrowHold);
+            }
+
+            settlingWaste = false;
+            if (matchTimer == null)
+                matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+            matchTimer?.NotifyLocalSettleComplete();
+        }
+
+        IEnumerator SlideOut(IngredientCardUI card)
+        {
+            RectTransform rect = (RectTransform)card.transform;
+            CanvasGroup group = card.TryGetComponent(out CanvasGroup existing)
+                ? existing
+                : card.gameObject.AddComponent<CanvasGroup>();
+            Vector2 start = rect.anchoredPosition;
+            Vector2 target = start + Vector2.up * wasteExitDistance;
+            float duration = Mathf.Max(0.01f, wasteExitDuration);
+
+            for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
+            {
+                float progress = Mathf.SmoothStep(0f, 1f, t / duration);
+                rect.anchoredPosition = Vector2.LerpUnclamped(start, target, progress);
+                group.alpha = 1f - progress;
+                yield return null;
+            }
+
+            group.alpha = 0f;
         }
 
         void HandleIngredientAwarded(IngredientData ingredient)
         {
+            if (settlingWaste) return;
             if (AddCard(ingredient) != null)
             {
                 Debug.Log($"[IngredientHand] Added {ingredient.DisplayName}; cards={cards.Count}.", this);
@@ -166,7 +293,8 @@ namespace SushiDojo.Cards
 
         void Update()
         {
-            UpdateHoveredCardFromPointer();
+            if (!settlingWaste)
+                UpdateHoveredCardFromPointer();
 
             float smoothTime = Mathf.Max(0.01f, animationSmoothTime);
             float deltaTime = Time.unscaledDeltaTime;

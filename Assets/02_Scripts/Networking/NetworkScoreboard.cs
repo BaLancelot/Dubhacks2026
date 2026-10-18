@@ -89,8 +89,8 @@ public class NetworkScoreboard : NetworkBehaviour
 
     public void RecordDiscardedIngredients(int ingredientCount)
     {
-        if (!CanSubmitScore() || ingredientCount < 1 ||
-            ingredientCount > RecipeData.IngredientSlotCount)
+        if (!CanSubmitDiscard() || ingredientCount < 1 ||
+            ingredientCount > MaxDiscardedIngredients)
             return;
 
         RecordDiscardedIngredientsRpc(ingredientCount);
@@ -101,7 +101,7 @@ public class NetworkScoreboard : NetworkBehaviour
         int ingredientCount,
         RpcParams rpcParams = default)
     {
-        if (!CanServerRecord(ingredientCount))
+        if (!CanServerRecord(ingredientCount, allowSettling: true))
             return;
 
         ulong senderId = rpcParams.Receive.SenderClientId;
@@ -125,7 +125,7 @@ public class NetworkScoreboard : NetworkBehaviour
         int ingredientCount,
         RpcParams rpcParams = default)
     {
-        if (!CanServerRecord(ingredientCount))
+        if (!CanServerRecord(ingredientCount, allowSettling: true, MaxDiscardedIngredients))
             return;
 
         ulong senderId = rpcParams.Receive.SenderClientId;
@@ -146,14 +146,21 @@ public class NetworkScoreboard : NetworkBehaviour
     bool CanSubmitScore() =>
         IsSpawned &&
         IsClient &&
-        (matchTimer == null || matchTimer.IsMatchRunning);
+        (matchTimer == null || matchTimer.IsMatchRunning || matchTimer.IsMatchSettling);
 
-    bool CanServerRecord(int ingredientCount) =>
+    bool CanSubmitDiscard() => CanSubmitScore();
+
+    const int MaxDiscardedIngredients =
+        IngredientHandView.MaxCards + RecipeData.IngredientSlotCount;
+
+    bool CanServerRecord(int ingredientCount, bool allowSettling, int maxCount = RecipeData.IngredientSlotCount) =>
         IsServer &&
         IsSpawned &&
         ingredientCount >= 1 &&
-        ingredientCount <= RecipeData.IngredientSlotCount &&
-        (matchTimer == null || matchTimer.IsMatchRunning);
+        ingredientCount <= maxCount &&
+        (matchTimer == null ||
+         matchTimer.IsMatchRunning ||
+         (allowSettling && matchTimer.IsMatchSettling));
 
     public int DisplayedLocalScore => localScoreChangeTimer > 0f
         ? GetAnimatedScore(localScoreStart, LocalScore, localScoreChangeTimer) : LocalScore;

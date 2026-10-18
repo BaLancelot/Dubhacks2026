@@ -44,6 +44,7 @@ namespace SushiDojo.UI
             SushiMultiplayer multiplayer = SushiMultiplayer.Instance;
             bool connected = multiplayer != null && !multiplayer.ConnectionLost;
             bool ended = timer != null && timer.HasMatchEnded;
+            bool settling = timer != null && timer.IsMatchSettling;
             bool running = timer != null && timer.IsMatchRunning;
             bool scoresReady = scoreboard != null && scoreboard.IsSpawned;
             if (localScore != null)
@@ -53,10 +54,10 @@ namespace SushiDojo.UI
             int seconds = timer != null ? Mathf.CeilToInt(timer.TimeRemaining) : 180;
             timerText.text = $"{seconds / 60:00}:{seconds % 60:00}";
             statusText.text = multiplayer == null ? "Open MainMenu to host or join" :
-                (running && connected && !multiplayer.IsBusy ? "" : multiplayer.Status);
+                ((running || settling) && connected && !multiplayer.IsBusy ? "" : multiplayer.Status);
             bool disconnected = multiplayer != null && multiplayer.ConnectionLost;
             resultsPanel.SetActive(ended || disconnected);
-            menuButton.gameObject.SetActive(!running && !ended && !disconnected);
+            menuButton.gameObject.SetActive(!running && !settling && !ended && !disconnected);
             menuButton.interactable = multiplayer != null && !multiplayer.IsBusy;
             if (!ended && !disconnected) return;
 

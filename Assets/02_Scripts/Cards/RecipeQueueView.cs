@@ -212,6 +212,21 @@ namespace SushiDojo.Cards
         void OnIngredientsDiscarded(int discardedIngredientCount)
         {
             submittedIngredients.Clear();
+            NetworkMatchTimer timer = FindFirstObjectByType<NetworkMatchTimer>();
+            if (timer != null && timer.IsMatchSettling)
+                StartCoroutine(RecordWasteAfterThrow(discardedIngredientCount));
+            else
+                RecordWaste(discardedIngredientCount);
+        }
+
+        IEnumerator RecordWasteAfterThrow(int discardedIngredientCount)
+        {
+            yield return new WaitForSecondsRealtime(1f);
+            RecordWaste(discardedIngredientCount);
+        }
+
+        void RecordWaste(int discardedIngredientCount)
+        {
             NetworkScoreboard scoreboard = FindFirstObjectByType<NetworkScoreboard>();
             if (scoreboard != null)
                 scoreboard.RecordDiscardedIngredients(discardedIngredientCount);

@@ -37,7 +37,10 @@ public class NetworkConveyor : NetworkBehaviour
 
         if (matchTimer != null)
         {
+            matchTimer.OnMatchSettling += StopConveyorForMatch;
             matchTimer.OnMatchEnded += StopConveyorForMatch;
+            if (matchTimer.IsMatchSettling || matchTimer.HasMatchEnded)
+                StopConveyorForMatch();
         }
 
         // Both host and client can request ingredient claims.
@@ -114,6 +117,7 @@ public class NetworkConveyor : NetworkBehaviour
 
     if (matchTimer != null)
     {
+        matchTimer.OnMatchSettling -= StopConveyorForMatch;
         matchTimer.OnMatchEnded -= StopConveyorForMatch;
     }
 }

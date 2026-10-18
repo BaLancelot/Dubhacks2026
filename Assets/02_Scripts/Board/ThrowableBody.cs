@@ -76,6 +76,15 @@ namespace SushiDojo.Board
             holdTarget = target;
         }
 
+        /// <summary>Puts a held body down without a throw or a Released event.</summary>
+        public void CancelHold()
+        {
+            if (!IsHeld) return;
+            IsHeld = false;
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
         public void Release(Vector3 throwVelocity)
         {
             IsHeld = false;

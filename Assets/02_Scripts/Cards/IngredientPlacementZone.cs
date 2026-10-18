@@ -23,6 +23,8 @@ namespace SushiDojo.Cards
         public event Action<int> IngredientsDiscarded;
         public IReadOnlyList<string> PlacedIngredientNames => placedIngredientNames;
         public bool IsFull => placedIngredientNames.Count >= RecipeData.IngredientSlotCount;
+        public bool HasPlacedIngredients => placedIngredients.Count > 0;
+        public int PlacedCount => placedIngredients.Count;
         /// <summary>The board placed ingredients sit on.</summary>
         public Transform Board => discardTrigger != null ? discardTrigger.transform : transform;
 
@@ -120,6 +122,47 @@ namespace SushiDojo.Cards
                 this);
             IngredientPlaced?.Invoke(data);
             return true;
+        }
+
+        /// <summary>Drops a leftover tray card onto the board without counting as a player placement.</summary>
+        public bool PlaceForWaste(IngredientData data)
+        {
+            if (data == null || ingredientPrefab == null || discardTrigger == null || !isActiveAndEnabled)
+                return false;
+
+            RectTransform zoneRect = (RectTransform)transform;
+            Rect rect = zoneRect.rect;
+            int index = placedIngredients.Count;
+            const int columns = 4;
+            float x = Mathf.Lerp(rect.xMin, rect.xMax, ((index % columns) + 0.5f) / columns);
+            float row = index / columns;
+            float y = Mathf.Lerp(rect.yMin, rect.yMax, (row + 0.5f) / 3f);
+            Vector3 worldPosition = zoneRect.TransformPoint(new Vector3(x, y, 0f));
+
+            Transform board = discardTrigger.transform;
+            BoardIngredient placedIngredient = Instantiate(
+                ingredientPrefab,
+                worldPosition + board.up * 0.08f,
+                board.rotation,
+                board);
+            if (!placedIngredient.Initialize(data, placementSortingOrderOffset))
+            {
+                Destroy(placedIngredient.gameObject);
+                return false;
+            }
+
+            placementSortingOrderOffset++;
+            placedIngredients.Add(placedIngredient);
+            placedIngredientNames.Add(data.DisplayName);
+            return true;
+        }
+
+        /// <summary>Throws the board so every ingredient on it is discarded.</summary>
+        public void ThrowForWaste()
+        {
+            if (discardTrigger == null || placedIngredients.Count == 0) return;
+            Transform board = discardTrigger.transform;
+            discardTrigger.Release(board.forward * 10f + board.up * 4f);
         }
 
         public void ConsumePlacedIngredients()

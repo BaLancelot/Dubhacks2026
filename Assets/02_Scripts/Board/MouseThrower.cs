@@ -31,12 +31,23 @@ namespace SushiDojo.Board
         ThrowableBody held;
         Vector3 grabOffset;
         Vector3 lastPlanePoint;
+        NetworkMatchTimer matchTimer;
 
         Camera Cam => targetCamera != null ? targetCamera : Camera.main;
         Transform Table => table != null ? table : transform;
 
         void Update()
         {
+            if (!MatchAllowsPlay())
+            {
+                if (held != null)
+                {
+                    held.CancelHold();
+                    held = null;
+                }
+                return;
+            }
+
             Mouse mouse = Mouse.current;
             Camera cam = Cam;
             if (mouse == null || cam == null) return;
@@ -60,6 +71,13 @@ namespace SushiDojo.Board
                 held.Release(AimAtTarget(EstimateVelocity()));
                 held = null;
             }
+        }
+
+        bool MatchAllowsPlay()
+        {
+            if (matchTimer == null)
+                matchTimer = FindFirstObjectByType<NetworkMatchTimer>();
+            return matchTimer == null || matchTimer.IsMatchRunning;
         }
 
         void TryGrab(Ray ray)
