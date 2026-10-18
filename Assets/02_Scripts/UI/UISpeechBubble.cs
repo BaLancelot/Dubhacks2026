@@ -21,11 +21,11 @@ namespace SushiDojo.UI
         [SerializeField, Min(16)] int resolution = 120;
 
         [Header("Text (optional)")]
-        [Tooltip("Text inside the bubble. This RectTransform resizes to fit it plus padding.")]
+        [Tooltip("Text inside the bubble. This RectTransform resizes to fit it plus padding. Empty = the first TextMeshPro under the bubble.")]
         [SerializeField] TMP_Text fitText;
         [SerializeField] Vector2 textPadding = new(36f, 24f);
-        [Tooltip("Text wraps beyond this width.")]
-        [SerializeField, Min(1f)] float maxTextWidth = 500f;
+        [Tooltip("Text wraps beyond this width. 0 = never wraps; the bubble just keeps growing.")]
+        [SerializeField, Min(0f)] float maxTextWidth = 500f;
 
         [Header("Tail")]
         [Tooltip("UI element that is talking. Takes priority.")]
@@ -79,18 +79,44 @@ namespace SushiDojo.UI
         public float PressureFrequency => pressureFrequency;
         public int Seed => seed;
         public float CurrentSeedOffset { get; private set; }
+        /// <summary>Vertices produced by the last mesh build (for diagnosing an invisible bubble).</summary>
+        public int LastVertexCount { get; private set; }
 
         public override Texture mainTexture => fillSprite != null ? fillSprite.texture : s_WhiteTexture;
 
-        protected UISpeechBubble()
+#if UNITY_EDITOR
+        // A bubble shouldn't block clicks; off by default when the component is added.
+        protected override void Reset()
         {
+            base.Reset();
             raycastTarget = false;
         }
+#endif
+
+        bool warnedNoCanvas;
 
         void Update()
         {
+            // UI only renders under a Canvas; say so instead of silently drawing nothing.
+            if (canvas == null)
+            {
+                if (!warnedNoCanvas)
+                    Debug.LogWarning($"[{nameof(UISpeechBubble)}] '{name}' is not under a Canvas, so it can't render. Move it under a Canvas.", this);
+                warnedNoCanvas = true;
+                return;
+            }
+            warnedNoCanvas = false;
+
             FitToText();
             SetVerticesDirty();
+        }
+
+        public TMP_Text FitText => fitText;
+
+        /// <summary>Text the bubble grows to fit.</summary>
+        public void SetFitText(TMP_Text text)
+        {
+            fitText = text;
         }
 
         /// <summary>Points the tail at a UI element at runtime.</summary>
@@ -110,6 +136,7 @@ namespace SushiDojo.UI
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();
+            LastVertexCount = 0;
             Rect rect = rectTransform.rect;
             if (rect.width <= 0f || rect.height <= 0f) return;
 
@@ -129,14 +156,16 @@ namespace SushiDojo.UI
             BubbleGeometry.BuildFill(outline, tailStart, tailEnd, BubbleGeometry.SpriteUvRect(fillSprite), color,
                 vertices, colors, uvs, triangles);
 
-            for (int i = 0; i < vertices.Count; i++) vh.AddVert((Vector2)vertices[i] + center, colors[i], uvs[i]);
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                Vector2 uv = uvs[i];
+                vh.AddVert(new Vector3(vertices[i].x + center.x, vertices[i].y + center.y, 0f), (Color32)colors[i], new Vector4(uv.x, uv.y, 0f, 0f));
+            }
             for (int i = 0; i < triangles.Count; i += 3) vh.AddTriangle(triangles[i], triangles[i + 1], triangles[i + 2]);
+            LastVertexCount = vh.currentVertCount;
 
-            // The outline graphic reads this, in pivot-local coordinates like the fill.
+            // The outline graphic (a child, rebuilt right after this) reads this, in pivot-local coordinates like the fill.
             for (int i = 0; i < outline.Count; i++) outline[i] += center;
-
-            UISpeechBubbleOutline outlineGraphic = GetComponentInChildren<UISpeechBubbleOutline>();
-            if (outlineGraphic != null) outlineGraphic.SetVerticesDirty();
         }
 
         /// <summary>Speaker position in this RectTransform's local space.</summary>
@@ -168,12 +197,10 @@ namespace SushiDojo.UI
 
         void FitToText()
         {
-            if (fitText == null) return;
+            TMP_Text text = fitText != null ? fitText : GetComponentInChildren<TMP_Text>();
+            if (text == null) return;
 
-            Vector2 preferred = fitText.GetPreferredValues(fitText.text, maxTextWidth, 0f);
-            preferred.x = Mathf.Min(preferred.x, maxTextWidth);
-            fitText.rectTransform.sizeDelta = preferred;
-            Vector2 wanted = preferred + textPadding * 2f;
+            Vector2 wanted = BubbleTextFit.Fit(text, maxTextWidth) + textPadding * 2f;
             if (rectTransform.rect.size != wanted)
             {
                 rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, wanted.x);

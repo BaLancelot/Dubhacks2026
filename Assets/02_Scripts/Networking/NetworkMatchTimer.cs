@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using SushiDojo.Conveyor;
 
 public class NetworkMatchTimer : NetworkBehaviour
@@ -173,6 +174,15 @@ public class NetworkMatchTimer : NetworkBehaviour
 
     private void Update()
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Debug: '-' ends the match right away (either player can press it).
+        Keyboard keyboard = Keyboard.current;
+        if (IsSpawned && IsMatchRunning && keyboard != null &&
+            (keyboard.minusKey.wasPressedThisFrame || keyboard.numpadMinusKey.wasPressedThisFrame))
+            DebugEndMatchRpc();
+#endif
+
+        // Only the server decides when the match ends.
         if (!IsSpawned || !IsServer)
             return;
 
@@ -321,6 +331,15 @@ public class NetworkMatchTimer : NetworkBehaviour
         }
 
         EndMatch();
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    private void DebugEndMatchRpc()
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("DEBUG: match ended early with '-'.");
+        EndMatch();
+#endif
     }
 
     private void EndMatch()

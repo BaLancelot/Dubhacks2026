@@ -5,9 +5,9 @@ using UnityEngine.UI;
 
 namespace SushiDojo.Menu
 {
-    /// <summary>Hover grow + hover/click sounds for a menu button.</summary>
+    /// <summary>Hover grow + hover/click sounds for a menu button. The click sound plays on press, not release.</summary>
     [RequireComponent(typeof(Button))]
-    public class MenuButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class MenuButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler
     {
         [SerializeField] SoundCue hoverCue;
         [SerializeField] SoundCue clickCue;
@@ -21,7 +21,11 @@ namespace SushiDojo.Menu
         void Awake()
         {
             button = GetComponent<Button>();
-            button.onClick.AddListener(() => SoundManager.Play(clickCue));
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (eventData.button == PointerEventData.InputButton.Left && button.IsInteractable()) SoundManager.Play(clickCue);
         }
 
         void Update()

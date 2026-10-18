@@ -17,12 +17,17 @@ namespace SushiDojo.Board
         [SerializeField, Min(0f)] float discardTorque = 3.5f;
         [SerializeField, Min(0f)] float fadeDelay = 0.35f;
         [SerializeField, Min(0f)] float fadeDuration = 0.6f;
+        [Tooltip("Turn the sprite to face the camera every frame instead of lying flat on the board.")]
+        [SerializeField] bool faceCamera = true;
+        [Tooltip("While facing the camera, lift the sprite by this fraction of its height so it stands on the board. 0.5 = bottom edge on the surface.")]
+        [SerializeField, Range(0f, 1f)] float standLift = 0.4f;
 
         BoxCollider ingredientCollider;
         MaterialPropertyBlock materialProperties;
         Color initialColor;
         float discardTimer;
         bool isDiscarding;
+        Vector3 rendererRestLocalPosition;
 
         public IngredientData Data { get; private set; }
 
@@ -31,6 +36,21 @@ namespace SushiDojo.Board
             ingredientCollider = GetComponent<BoxCollider>();
             ingredientCollider.enabled = false;
             materialProperties = new MaterialPropertyBlock();
+            if (ingredientRenderer != null) rendererRestLocalPosition = ingredientRenderer.transform.localPosition;
+        }
+
+        void LateUpdate()
+        {
+            if (!faceCamera || ingredientRenderer == null || ingredientRenderer.sprite == null) return;
+            Camera cam = Camera.main;
+            if (cam == null) return;
+
+            Transform view = cam.transform;
+            Transform sprite = ingredientRenderer.transform;
+            float height = ingredientRenderer.sprite.bounds.size.y * sprite.lossyScale.y;
+            sprite.SetPositionAndRotation(
+                transform.TransformPoint(rendererRestLocalPosition) + view.up * (height * standLift),
+                view.rotation);
         }
 
         void Update()

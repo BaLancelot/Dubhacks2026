@@ -232,6 +232,21 @@ namespace SushiDojo.Cards
                 scoreboard.RecordDiscardedIngredients(discardedIngredientCount);
         }
 
+        /// <summary>
+        /// True when ingredients are on the board but no visible recipe (top or next) can still be made from them,
+        /// so the only way forward is to throw the board.
+        /// </summary>
+        public bool IsBoardHopeless
+        {
+            get
+            {
+                if (isAnimating || submittedIngredients.Count == 0 || CurrentRecipe == null) return false;
+                if (CanCompleteRecipe(CurrentRecipe)) return false;
+                RecipeData secondRecipe = currentIndex + 1 < recipeDeck.Length ? recipeDeck[currentIndex + 1] : null;
+                return secondRecipe == null || !CanCompleteRecipe(secondRecipe);
+            }
+        }
+
         bool MatchesRecipe(RecipeData recipe) =>
             submittedIngredients.Count == CountRequiredIngredients(recipe) && CanCompleteRecipe(recipe);
 

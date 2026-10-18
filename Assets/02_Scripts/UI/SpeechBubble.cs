@@ -25,11 +25,11 @@ namespace SushiDojo.UI
         [SerializeField, Min(16)] int resolution = 120;
 
         [Header("Text (optional)")]
-        [Tooltip("TextMeshPro inside the bubble. The body grows to fit it plus padding.")]
+        [Tooltip("TextMeshPro inside the bubble. The body grows to fit it plus padding. Empty = the first TextMeshPro under the bubble.")]
         [SerializeField] TMP_Text fitText;
         [SerializeField] Vector2 textPadding = new(0.35f, 0.25f);
-        [Tooltip("Text wraps beyond this width.")]
-        [SerializeField, Min(0.1f)] float maxTextWidth = 6f;
+        [Tooltip("Text wraps beyond this width. 0 = never wraps; the bubble just keeps growing.")]
+        [SerializeField, Min(0f)] float maxTextWidth = 6f;
 
         [Header("Tail")]
         [Tooltip("Who is talking. The tail grows toward it.")]
@@ -111,6 +111,7 @@ namespace SushiDojo.UI
             if (isActiveAndEnabled && mesh != null) Rebuild();
         }
 
+        public TMP_Text FitText => fitText;
         public string SortingLayerName => sortingLayerName;
         public int SortingOrder => sortingOrder;
 
@@ -162,12 +163,9 @@ namespace SushiDojo.UI
 
         Vector2 FitBodyToText()
         {
-            if (fitText == null) return size;
-
-            Vector2 preferred = fitText.GetPreferredValues(fitText.text, maxTextWidth, 0f);
-            preferred.x = Mathf.Min(preferred.x, maxTextWidth);
-            fitText.rectTransform.sizeDelta = preferred;
-            return preferred + textPadding * 2f;
+            TMP_Text text = fitText != null ? fitText : GetComponentInChildren<TMP_Text>();
+            if (text == null) return size;
+            return BubbleTextFit.Fit(text, maxTextWidth) + textPadding * 2f;
         }
 
         void ApplyRendererSettings()
