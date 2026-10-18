@@ -1,0 +1,309 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using SushiDojo.Ingredients;
+using UnityEngine;
+
+namespace SushiDojo.Cards
+{
+    [RequireComponent(typeof(RectTransform))]
+    public class RecipeQueueView : MonoBehaviour
+    {
+        [SerializeField] RecipeCardUI cardPrefab;
+        [SerializeField] RecipeData[] recipeDeck = Array.Empty<RecipeData>();
+        [SerializeField, Min(0f)] float cardSpacing = 160f;
+        [SerializeField, Range(0.1f, 1f)] float cardScale = 0.65f;
+        [SerializeField, Min(0.01f)] float animationDuration = 0.35f;
+        [SerializeField, Min(0f)] float exitDistance = 190f;
+
+        RecipeCardUI topCard;
+        RecipeCardUI nextCard;
+        [SerializeField] IngredientPlacementZone placementZone;
+        readonly List<IngredientData> submittedIngredients = new();
+        int currentIndex;
+        bool isAnimating;
+
+        public event Action<RecipeData> RecipeCompleted;
+
+        public RecipeData CurrentRecipe =>
+            currentIndex < recipeDeck.Length ? recipeDeck[currentIndex] : null;
+
+        void Awake()
+        {
+            if (recipeDeck == null)
+            {
+                Debug.LogError($"{nameof(RecipeQueueView)} requires a recipe deck.", this);
+                enabled = false;
+                return;
+            }
+
+            if (cardPrefab == null)
+            {
+                Debug.LogError($"{nameof(RecipeQueueView)} requires a recipe card prefab.", this);
+                enabled = false;
+                return;
+            }
+
+            for (int i = 0; i < recipeDeck.Length; i++)
+            {
+                if (recipeDeck[i] != null) continue;
+
+                Debug.LogError($"{nameof(RecipeQueueView)} has an empty recipe deck entry at index {i}.", this);
+                enabled = false;
+                return;
+            }
+
+            recipeDeck = (RecipeData[])recipeDeck.Clone();
+            topCard = Instantiate(cardPrefab, transform, false);
+            nextCard = Instantiate(cardPrefab, transform, false);
+            PositionCard(topCard, TopSlotPosition);
+            PositionCard(nextCard, NextSlotPosition);
+            RefreshCards();
+        }
+
+        void OnEnable()
+        {
+            if (placementZone == null)
+                placementZone = FindFirstObjectByType<IngredientPlacementZone>();
+            if (placementZone == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(RecipeQueueView)} could not find an ingredient placement zone; " +
+                    "recipes can still be completed by calling CompleteTopRecipe().",
+                    this);
+                return;
+            }
+
+            placementZone.AcceptingIngredients = CurrentRecipe != null && !isAnimating;
+            placementZone.IngredientPlaced += OnIngredientPlaced;
+            placementZone.IngredientsDiscarded += OnIngredientsDiscarded;
+        }
+
+        void OnDisable()
+        {
+            if (placementZone != null)
+            {
+                placementZone.IngredientPlaced -= OnIngredientPlaced;
+                placementZone.IngredientsDiscarded -= OnIngredientsDiscarded;
+            }
+            submittedIngredients.Clear();
+        }
+
+        public void CompleteTopRecipe()
+        {
+            if (!enabled || isAnimating || currentIndex >= recipeDeck.Length) return;
+            ClearSubmittedIngredients();
+            StartCoroutine(CompleteTopRecipeRoutine());
+        }
+
+        void OnIngredientPlaced(IngredientData ingredient)
+        {
+            if (CurrentRecipe == null || placementZone == null) return;
+
+            if (isAnimating) return;
+
+            submittedIngredients.Add(ingredient);
+            RecipeData secondRecipe = currentIndex + 1 < recipeDeck.Length
+                ? recipeDeck[currentIndex + 1] : null;
+            if (MatchesRecipe(CurrentRecipe))
+            {
+                CompleteTopRecipe();
+                return;
+            }
+            if (secondRecipe != null && MatchesRecipe(secondRecipe))
+            {
+                ClearSubmittedIngredients();
+                StartCoroutine(CompleteSecondRecipeRoutine());
+                return;
+            }
+
+        }
+
+        void OnIngredientsDiscarded()
+        {
+            submittedIngredients.Clear();
+        }
+
+        bool MatchesRecipe(RecipeData recipe) =>
+            submittedIngredients.Count == CountRequiredIngredients(recipe) && CanCompleteRecipe(recipe);
+
+        bool CanCompleteRecipe(RecipeData recipe)
+        {
+            bool[] matched = new bool[recipe.Ingredients.Count];
+            foreach (IngredientData submitted in submittedIngredients)
+            {
+                int matchIndex = -1;
+                for (int i = 0; i < recipe.Ingredients.Count; i++)
+                {
+                    if (matched[i] || recipe.Ingredients[i] == null || recipe.Ingredients[i] != submitted) continue;
+                    matchIndex = i;
+                    break;
+                }
+                if (matchIndex < 0) return false;
+                matched[matchIndex] = true;
+            }
+            return true;
+        }
+
+        IEnumerator CompleteSecondRecipeRoutine()
+        {
+            isAnimating = true;
+            if (placementZone != null) placementZone.AcceptingIngredients = false;
+            RecipeData completedRecipe = recipeDeck[currentIndex + 1];
+            yield return AnimateCards((RectTransform)nextCard.transform,
+                NextSlotPosition + Vector2.right * exitDistance,
+                Vector3.one * (cardScale * 0.8f), null, Vector2.zero, Vector3.one);
+
+            // Remove only the second recipe; the first remains available.
+            for (int i = currentIndex + 1; i < recipeDeck.Length - 1; i++)
+                recipeDeck[i] = recipeDeck[i + 1];
+            Array.Resize(ref recipeDeck, recipeDeck.Length - 1);
+            RefreshCards();
+            if (currentIndex + 1 < recipeDeck.Length)
+            {
+                PositionCard(nextCard, NextSlotPosition + Vector2.right * exitDistance);
+                yield return AnimateCards((RectTransform)nextCard.transform,
+                    NextSlotPosition, Vector3.one * cardScale, null, Vector2.zero, Vector3.one);
+            }
+            isAnimating = false;
+            if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
+            RecipeCompleted?.Invoke(completedRecipe);
+        }
+
+        static int CountRequiredIngredients(RecipeData recipe)
+        {
+            int count = 0;
+            foreach (IngredientData ingredient in recipe.Ingredients)
+            {
+                if (ingredient != null) count++;
+            }
+
+            return count;
+        }
+
+        void ClearSubmittedIngredients()
+        {
+            submittedIngredients.Clear();
+            if (placementZone != null)
+                placementZone.ConsumePlacedIngredients();
+        }
+
+        IEnumerator CompleteTopRecipeRoutine()
+        {
+            isAnimating = true;
+            if (placementZone != null) placementZone.AcceptingIngredients = false;
+            RecipeData completedRecipe = recipeDeck[currentIndex];
+            RectTransform topRect = (RectTransform)topCard.transform;
+            RectTransform nextRect = currentIndex + 1 < recipeDeck.Length
+                ? (RectTransform)nextCard.transform
+                : null;
+
+            yield return AnimateCards(
+                topRect,
+                TopSlotPosition + Vector2.left * exitDistance,
+                Vector3.one * (cardScale * 0.8f),
+                nextRect,
+                TopSlotPosition,
+                Vector3.one * cardScale);
+
+            currentIndex++;
+            RecipeCardUI oldTopCard = topCard;
+            topCard = nextCard;
+            nextCard = oldTopCard;
+
+            if (currentIndex < recipeDeck.Length)
+            {
+                PositionCard(topCard, TopSlotPosition);
+                if (currentIndex + 1 < recipeDeck.Length)
+                {
+                    nextCard.SetData(recipeDeck[currentIndex + 1]);
+                    nextCard.gameObject.SetActive(true);
+                    PositionCard(nextCard, NextSlotPosition + Vector2.right * exitDistance);
+                    yield return AnimateCards(
+                        (RectTransform)nextCard.transform,
+                        NextSlotPosition,
+                        Vector3.one * cardScale,
+                        null,
+                        Vector2.zero,
+                        Vector3.one);
+                }
+                else
+                {
+                    nextCard.SetData(null);
+                    nextCard.gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                topCard.gameObject.SetActive(false);
+                nextCard.gameObject.SetActive(false);
+            }
+
+            isAnimating = false;
+            if (placementZone != null) placementZone.AcceptingIngredients = CurrentRecipe != null;
+            RecipeCompleted?.Invoke(completedRecipe);
+        }
+
+        IEnumerator AnimateCards(
+            RectTransform first,
+            Vector2 firstTarget,
+            Vector3 firstScaleTarget,
+            RectTransform second,
+            Vector2 secondTarget,
+            Vector3 secondScaleTarget)
+        {
+            Vector2 firstStart = first.anchoredPosition;
+            Vector3 firstScaleStart = first.localScale;
+            Vector2 secondStart = second != null ? second.anchoredPosition : Vector2.zero;
+            Vector3 secondScaleStart = second != null ? second.localScale : Vector3.one;
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.01f, animationDuration);
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float progress = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / duration));
+                first.anchoredPosition = Vector2.LerpUnclamped(firstStart, firstTarget, progress);
+                first.localScale = Vector3.LerpUnclamped(firstScaleStart, firstScaleTarget, progress);
+
+                if (second != null)
+                {
+                    second.anchoredPosition = Vector2.LerpUnclamped(secondStart, secondTarget, progress);
+                    second.localScale = Vector3.LerpUnclamped(secondScaleStart, secondScaleTarget, progress);
+                }
+
+                yield return null;
+            }
+
+            first.anchoredPosition = firstTarget;
+            first.localScale = firstScaleTarget;
+            if (second != null)
+            {
+                second.anchoredPosition = secondTarget;
+                second.localScale = secondScaleTarget;
+            }
+        }
+
+        void RefreshCards()
+        {
+            topCard.SetData(CurrentRecipe);
+            topCard.gameObject.SetActive(CurrentRecipe != null);
+
+            RecipeData nextRecipe = currentIndex + 1 < recipeDeck.Length
+                ? recipeDeck[currentIndex + 1]
+                : null;
+            nextCard.SetData(nextRecipe);
+            nextCard.gameObject.SetActive(nextRecipe != null);
+        }
+
+        void PositionCard(RecipeCardUI card, Vector2 position)
+        {
+            RectTransform cardRect = (RectTransform)card.transform;
+            cardRect.anchoredPosition = position;
+            cardRect.localScale = Vector3.one * cardScale;
+        }
+
+        Vector2 TopSlotPosition => new(-cardSpacing * 0.5f, 0f);
+        Vector2 NextSlotPosition => new(cardSpacing * 0.5f, 0f);
+    }
+}

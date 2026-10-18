@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1b9037db13545b4baaa09cf26f8c453, type: 3}
+  m_Name: TamagoSushi
+  m_EditorClassIdentifier: 
+  displayName: Tamago Sushi
+  foodSprite: {fileID: 0}
+  ingredients:
+  - {fileID: 11400000, guid: 7494c542b44249438cb5a6fd8c8e8757, type: 2}
+  - {fileID: 11400000, guid: dc0ac6f699ac56d74411557b0a17f4e6, type: 2}
+  - {fileID: 11400000, guid: 321ef1f257de6ae43b0d91f024b36ce5, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}

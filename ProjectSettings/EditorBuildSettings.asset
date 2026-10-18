@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/00_Scenes/MPTest.unity
     guid: 68ad21f9e638942498ef970d5c4f4723
+  - enabled: 1
+    path: Assets/00_Scenes/CardPreview.unity
+    guid: 9769a972727e431aa3eea552af891666
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
