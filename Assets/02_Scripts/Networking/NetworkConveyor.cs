@@ -15,7 +15,8 @@ public class NetworkConveyor : NetworkBehaviour
     // Shared count for debugging successful claims.
     public NetworkVariable<int> TotalClaims = new(0);
 
-    // Host-controlled ingredient slots.
+    // Host-controlled slots: -1 = empty, >= 0 = ingredient,
+    // <= -2 = claimed ingredient encoded as -index - 2 (plate remains).
     private NetworkList<int> slots = new();
     private bool slotsChanged;
 
@@ -42,9 +43,7 @@ public class NetworkConveyor : NetworkBehaviour
             for (int i = 0; i < count; i++)
                 slots.Add(-1);
 
-            conveyor.StartBelt();
-
-            Debug.Log("Host started the conveyor!");
+            Debug.Log("Host initialized the conveyor!");
         }
         else
         {
@@ -56,14 +55,19 @@ public class NetworkConveyor : NetworkBehaviour
     }
 
     public override void OnNetworkDespawn()
-    {
-        slots.OnListChanged -= OnSlotsChanged;
+{
+    slots.OnListChanged -= OnSlotsChanged;
 
-        if (conveyor != null)
-        {
-            conveyor.OnCenterClicked -= RequestTakeIngredient;
-        }
+    if (conveyor != null)
+    {
+        conveyor.OnCenterClicked -= RequestTakeIngredient;
     }
+
+    if (matchTimer != null)
+    {
+        matchTimer.OnMatchEnded -= StopConveyorForMatch;
+    }
+}
 
     private void OnSlotsChanged(NetworkListEvent<int> change)
     {
@@ -90,7 +94,7 @@ public class NetworkConveyor : NetworkBehaviour
             for (int i = 0; i < slots.Count; i++)
             {
                 int ingredient =
-                    conveyor.GetIngredientIndexAtSlot(i);
+                    conveyor.GetSlotState(i);
 
                 if (slots[i] != ingredient)
                     slots[i] = ingredient;
@@ -124,46 +128,40 @@ public class NetworkConveyor : NetworkBehaviour
     }
 
     // Claim validation always happens on the server.
-    [Rpc(SendTo.Server)]
-    private void TakeIngredientRpc(RpcParams rpcParams = default)
+    
+[Rpc(SendTo.Server)]
+private void TakeIngredientRpc(RpcParams rpcParams = default)
+{
+    if (matchTimer != null && !matchTimer.IsMatchRunning)
+        return;
+
+    if (conveyor == null)
+        return;
+
+    ulong playerId = rpcParams.Receive.SenderClientId;
+
+    if (conveyor.TryTakeCenter((int)playerId, out IngredientData ingredient))
     {
-        if (matchTimer != null && !matchTimer.IsMatchRunning)
-            return;
-        if (conveyor == null)
-            return;
+        int ingredientIndex =
+            conveyor.GetIngredientIndex(ingredient);
 
-        if (conveyor.TryTakeCenter(out IngredientData ingredient))
+        if (ingredientIndex < 0)
         {
-            ulong playerId = rpcParams.Receive.SenderClientId;
-
-            int ingredientIndex =
-                conveyor.GetIngredientIndex(ingredient);
-
-            if (ingredientIndex < 0)
-            {
-                Debug.LogError(
-                    "Claimed ingredient is not registered!"
-                );
-
-                return;
-            }
-
-            TotalClaims.Value++;
-
-            Debug.Log(
-                $"Player {playerId} claimed {ingredient.name}"
-            );
-
-            // Only the player who won receives this confirmation.
-            ConfirmIngredientRpc(
-                ingredientIndex,
-                RpcTarget.Single(
-                    playerId,
-                    RpcTargetUse.Temp
-                )
-            );
+            Debug.LogError("Claimed ingredient is not registered!");
+            return;
         }
+
+        TotalClaims.Value++;
+
+        Debug.Log($"Player {playerId} claimed {ingredient.name}");
+
+        ConfirmIngredientRpc(
+            ingredientIndex,
+            RpcTarget.Single(playerId, RpcTargetUse.Temp)
+        );
     }
+}
+
 
     // Runs only on the player who successfully claimed the food.
     [Rpc(SendTo.SpecifiedInParams)]

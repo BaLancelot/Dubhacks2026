@@ -2,12 +2,13 @@
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using SushiDojo.Conveyor;
 
 public class NetworkMatchTimer : NetworkBehaviour
 {
     [Header("Match Settings")]
     [SerializeField] private float matchDuration = 180f;
-
+    [SerializeField] private ConveyorBelt conveyor;
     [Header("References")]
     [SerializeField] private NetworkScoreboard scoreboard;
 
@@ -65,25 +66,34 @@ public class NetworkMatchTimer : NetworkBehaviour
     }
 
     public void StartMatch()
+{
+    if (!IsSpawned || !IsServer || matchStarted.Value)
+        return;
+
+    if (scoreboard == null || !scoreboard.IsSpawned)
     {
-        if (!IsSpawned || !IsServer || matchStarted.Value)
-            return;
-
-        if (scoreboard == null || !scoreboard.IsSpawned)
-        {
-            Debug.LogError("NetworkScoreboard not assigned or ready!");
-            return;
-        }
-
-        winner.Value = -1;
-
-        endTime.Value =
-            NetworkManager.ServerTime.Time + matchDuration;
-
-        matchStarted.Value = true;
-
-        Debug.Log("Three-minute match started!");
+        Debug.LogError("Scoreboard is not ready!");
+        return;
     }
+
+    endTime.Value =
+        NetworkManager.ServerTime.Time + matchDuration;
+
+    matchStarted.Value = true;
+
+    if (conveyor == null)
+    {
+        Debug.LogError("TIMER: Conveyor reference is missing!");
+        return;
+    }
+
+    conveyor.StartBelt();
+
+    Debug.Log(
+        $"TIMER: Started conveyor {conveyor.gameObject.name}, " +
+        $"IsRunning={conveyor.IsRunning}"
+    );
+}
 
     private void Update()
     {

@@ -39,6 +39,8 @@ namespace SushiDojo.Conveyor
 
         public IngredientData Data { get; private set; }
         public bool IsRevealed { get; private set; }
+        public bool IsTaken { get; private set; }
+
         private Action<BeltItem> onClicked;
         Vector3 ingredientBaseScale = Vector3.one;
         Vector3 lidRestPosition;
@@ -48,9 +50,28 @@ namespace SushiDojo.Conveyor
 
         void Awake()
         {
+            // Resolve the layer by name in every player and keep the complete reveal
+            // above BeltBody (Back / 2), including the plate and sparkle children.
+            ApplySorting(plateRenderer, 3);
+            ApplySorting(ingredientRenderer, 4);
+            ApplySorting(coverRenderer, 5);
+            ApplySorting(openLidRenderer, 6);
+            if (revealSparkle != null)
+            {
+                foreach (SpriteRenderer sparkle in revealSparkle.GetComponentsInChildren<SpriteRenderer>(true))
+                    ApplySorting(sparkle, 7);
+            }
+
             Transform lid = openLidRenderer.transform;
             lidRestPosition = lid.localPosition;
             lidRestRotation = lid.localRotation;
+        }
+
+        static void ApplySorting(SpriteRenderer target, int order)
+        {
+            if (target == null) return;
+            target.sortingLayerName = "Back";
+            target.sortingOrder = order;
         }
 
         void Update()
@@ -61,7 +82,8 @@ namespace SushiDojo.Conveyor
             float popProgress = Progress(revealTimer, revealPopDuration);
             float lidProgress = Progress(revealTimer, lidOpenDuration);
 
-            ingredientRenderer.transform.localScale = ingredientBaseScale * revealPopCurve.Evaluate(popProgress);
+            if (!IsTaken)
+                ingredientRenderer.transform.localScale = ingredientBaseScale * revealPopCurve.Evaluate(popProgress);
             ApplyLidPose(lidOpenCurve.Evaluate(lidProgress));
 
             if (popProgress >= 1f && lidProgress >= 1f) FinishRevealAnimation();
@@ -71,21 +93,20 @@ namespace SushiDojo.Conveyor
         {
             onClicked = clickHandler;
             Data = data;
+            IsTaken = false;
             ingredientRenderer.sprite = data.Sprite;
             FitIngredientToSize();
             Cover();
         }
 
         void OnMouseDown()
-        {
-            Debug.Log($"BeltItem clicked! Revealed: {IsRevealed}");
-
-            if (IsRevealed)
-            {
-                Debug.Log("Sending ingredient click to conveyor!");
-                onClicked?.Invoke(this);
-            }
-        }
+{
+    if (IsRevealed && !IsTaken)
+    {
+        Debug.Log("Requesting ingredient claim!");
+        onClicked?.Invoke(this);
+    }
+}
     
         public void Cover()
         {
@@ -107,6 +128,14 @@ namespace SushiDojo.Conveyor
             if (revealSparkle != null) revealSparkle.Play();
         }
 
+        /// <summary>Removes only the ingredient. Plate and lid stay on the belt.</summary>
+        public void TakeIngredient()
+        {
+            IsTaken = true;
+            ingredientRenderer.enabled = false;
+            ingredientRenderer.transform.localScale = ingredientBaseScale;
+        }
+
         /// <summary>Keeps the plate and ingredient visible but removes the open lid.</summary>
         public void LeaveCenter()
         {
@@ -115,12 +144,15 @@ namespace SushiDojo.Conveyor
         }
 
         void SetVisible(bool cover, bool plate, bool ingredient, bool openLid)
-        {
-            coverRenderer.enabled = cover;
-            plateRenderer.enabled = plate;
-            ingredientRenderer.enabled = ingredient;
-            openLidRenderer.enabled = openLid;
-        }
+{
+    coverRenderer.enabled = cover;
+    plateRenderer.enabled = plate;
+
+    // Once taken, the ingredient must stay hidden.
+    ingredientRenderer.enabled = ingredient && !IsTaken;
+
+    openLidRenderer.enabled = openLid;
+}
 
         void FinishRevealAnimation()
         {

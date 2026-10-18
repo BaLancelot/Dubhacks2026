@@ -32,10 +32,15 @@ namespace SushiDojo.Conveyor
         [SerializeField, Min(1)] int sideSlotCount = 2;
         [SerializeField, Min(0.01f)] float slotSpacing = 1.5f;
 
-        [Header("Background")]
-        [Tooltip("Scaled to cover all visible slots.")]
-        [SerializeField] SpriteRenderer beltBackground;
-        [SerializeField, Min(0.01f)] float backgroundHeight = 1.5f;
+        [Header("Belt Body")]
+        [Tooltip("Its local X scale is set to the belt length. Child meshes should be 1 unit long on X.")]
+        [SerializeField] Transform beltBody;
+        [Tooltip("Belt length beyond the visible slots, in world units.")]
+        [SerializeField, Min(0f)] float beltExtraLength;
+        [Tooltip("World length of one texture repeat along the belt. Used by BeltTexture faces.")]
+        [SerializeField, Min(0.01f)] float textureTileLength = 1.5f;
+        [Tooltip("Slot box height in the scene gizmo.")]
+        [SerializeField, Min(0.01f)] float gizmoSlotHeight = 1.5f;
 
         [Header("Timing")]
         [SerializeField, Min(0.01f)] float moveDuration = 0.2f;
@@ -57,14 +62,20 @@ namespace SushiDojo.Conveyor
         [SerializeField] int seed;
 
         public event Action<IngredientData> OnCenterRevealed;
-        public event Action<IngredientData> OnCenterTaken;
+        /// <summary>(playerId, ingredient) — fired when a player takes the center ingredient.</summary>
+        public event Action<int, IngredientData> OnCenterTaken;
         public event Action OnCenterClicked;
+
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
         public bool IsRunning { get; private set; }
+        public float TravelDistance => (completedSteps + currentMoveProgress) * slotSpacing;
+        public float TextureTileLength => textureTileLength;
+        public float BeltLength => VisibleSlotCount * slotSpacing + beltExtraLength;
         public bool CanTakeCenter =>
             state == State.Holding &&
             CenterItem != null &&
-            CenterItem.IsRevealed;
+            CenterItem.IsRevealed &&
+            !CenterItem.IsTaken;
 
         // Lane layout: [exit] [visible slots ...] [entry]
         int LaneLength => VisibleSlotCount + 2;
@@ -80,17 +91,25 @@ namespace SushiDojo.Conveyor
         State state = State.Idle;
         float stateTimer;
         int stepCount;
+        int completedSteps;
+        float currentMoveProgress;
 
         // Client-side animation.
         Coroutine remoteMovement;
 
         void Awake()
         {
-            ApplyBackgroundSize();
+            ApplyBodyLength();
         }
 
         void Start()
         {
+            Debug.LogError(
+    $"CONVEYOR START: {gameObject.name}, " +
+    $"RunOnStart={runOnStart}, " +
+    $"PrefillOnStart={prefillOnStart}",
+    this
+);
             rng = useFixedSeed
                 ? new System.Random(seed)
                 : new System.Random();
@@ -128,15 +147,21 @@ namespace SushiDojo.Conveyor
         }
 
         public void StartBelt()
-        {
-            if (IsRunning)
-                return;
+{
+    Debug.LogError(
+        $"STARTBELT CALLED on {gameObject.name}!\n" +
+        Environment.StackTrace,
+        this
+    );
 
-            IsRunning = true;
+    if (IsRunning)
+        return;
 
-            if (state == State.Idle)
-                EnterHold();
-        }
+    IsRunning = true;
+
+    if (state == State.Idle)
+        EnterHold();
+}
 
         /// <summary>
         /// Stops after the current move finishes.
@@ -151,21 +176,23 @@ namespace SushiDojo.Conveyor
         }
 
         void OnBeltItemClicked(BeltItem item)
-        {
-            Debug.Log("Conveyor received ingredient click!");
+{
+    if (lane == null ||
+        item != CenterItem ||
+        !item.IsRevealed ||
+        item.IsTaken)
+    {
+        Debug.Log("Click rejected locally.");
+        return;
+    }
 
-            if (lane == null ||
-                item != CenterItem ||
-                !item.IsRevealed)
-            {
-                Debug.Log("Click rejected: Not the revealed center ingredient.");
-                return;
-            }
+    Debug.Log("Valid click! Sending claim request.");
 
-            Debug.Log("Valid center click! Requesting claim.");
-            OnCenterClicked?.Invoke();
-        }
-        public bool TryTakeCenter(out IngredientData data)
+    OnCenterClicked?.Invoke();
+}
+
+        /// <summary>First successful claim wins. Plate and lid remain after a claim.</summary>
+        public bool TryTakeCenter(int playerId, out IngredientData data)
         {
             data = null;
 
@@ -174,11 +201,9 @@ namespace SushiDojo.Conveyor
 
             BeltItem item = CenterItem;
             data = item.Data;
+            item.TakeIngredient();
 
-            lane[CenterIndex] = null;
-            Destroy(item.gameObject);
-
-            OnCenterTaken?.Invoke(data);
+            OnCenterTaken?.Invoke(playerId, data);
             return true;
         }
 
@@ -192,7 +217,7 @@ namespace SushiDojo.Conveyor
                 return null;
             }
 
-            return lane[index] != null
+            return lane[index] != null && !lane[index].IsTaken
                 ? lane[index].Data
                 : null;
         }
@@ -206,6 +231,19 @@ namespace SushiDojo.Conveyor
             return data == null
                 ? -1
                 : ingredients.IndexOf(data);
+        }
+
+        // -1 is an empty slot. Values <= -2 retain the ingredient identity
+        // of a claimed item, so clients keep its plate and lid on the belt.
+        public int GetSlotState(int slot)
+        {
+            if (lane == null || slot < 0 || slot >= lane.Length || lane[slot] == null)
+                return -1;
+
+            BeltItem item = lane[slot];
+            int index = ingredients.IndexOf(item.Data);
+            if (index < 0) return -1;
+            return item.IsTaken ? -index - 2 : index;
         }
 
         /// <summary>
@@ -231,7 +269,10 @@ namespace SushiDojo.Conveyor
             // from right to left.
             for (int i = 0; i < slots.Count; i++)
             {
-                int ingredientIndex = slots[i];
+                int slotState = slots[i];
+                if (slotState == -1) continue;
+                bool isTaken = slotState <= -2;
+                int ingredientIndex = isTaken ? -(slotState + 2) : slotState;
 
                 if (ingredientIndex < 0 ||
                     ingredientIndex >= ingredients.Count)
@@ -248,7 +289,8 @@ namespace SushiDojo.Conveyor
 
                 // Reuse an item already in this slot.
                 if (previous[i] != null &&
-                    previous[i].Data == data)
+                    previous[i].Data == data &&
+                    (isTaken || !previous[i].IsTaken))
                 {
                     item = previous[i];
                     previous[i] = null;
@@ -259,7 +301,8 @@ namespace SushiDojo.Conveyor
                 if (item == null &&
                     i + 1 < previous.Length &&
                     previous[i + 1] != null &&
-                    previous[i + 1].Data == data)
+                    previous[i + 1].Data == data &&
+                    (isTaken || !previous[i + 1].IsTaken))
                 {
                     item = previous[i + 1];
                     previous[i + 1] = null;
@@ -294,6 +337,9 @@ namespace SushiDojo.Conveyor
                     if (item.IsRevealed)
                         item.Cover();
                 }
+
+                if (isTaken && !item.IsTaken)
+                    item.TakeIngredient();
             }
 
             // Remove old objects that aren't needed anymore.
@@ -411,6 +457,7 @@ namespace SushiDojo.Conveyor
             );
 
             float eased = moveCurve.Evaluate(progress);
+            currentMoveProgress = eased;
 
             for (int i = 0; i < LaneLength; i++)
             {
@@ -436,6 +483,9 @@ namespace SushiDojo.Conveyor
                 if (lane[i] != null)
                     lane[i].transform.localPosition = SlotPosition(i);
             }
+
+            completedSteps++;
+            currentMoveProgress = 0f;
 
             if (lane[ExitIndex] != null)
             {
@@ -534,42 +584,24 @@ namespace SushiDojo.Conveyor
             );
         }
 
-        void ApplyBackgroundSize()
+        void ApplyBodyLength()
         {
-            if (beltBackground == null ||
-                beltBackground.sprite == null)
-            {
-                return;
-            }
+            if (beltBody == null) return;
 
-            Vector2 spriteSize = beltBackground.sprite.bounds.size;
-
-            if (spriteSize.x <= 0f || spriteSize.y <= 0f)
-                return;
-
-            float width = VisibleSlotCount * slotSpacing;
-
-            beltBackground.transform.localScale = new Vector3(
-                width / spriteSize.x,
-                backgroundHeight / spriteSize.y,
-                1f
-            );
+            Vector3 scale = beltBody.localScale;
+            scale.x = BeltLength;
+            beltBody.localScale = scale;
         }
 
         void OnValidate()
         {
-            ApplyBackgroundSize();
+            ApplyBodyLength();
         }
 
         void OnDrawGizmos()
         {
             Gizmos.matrix = ItemRoot.localToWorldMatrix;
-
-            Vector3 slotSize = new Vector3(
-                slotSpacing,
-                backgroundHeight,
-                0f
-            );
+            Vector3 slotSize = new Vector3(slotSpacing, gizmoSlotHeight, 0f);
 
             for (int i = 0; i < LaneLength; i++)
             {

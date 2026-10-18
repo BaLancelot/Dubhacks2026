@@ -75,7 +75,7 @@ public class SushiMultiplayer : MonoBehaviour
 
     void OnGUI()
     {
-        GUILayout.BeginArea(new Rect(20, 20, 220, 420));
+        GUILayout.BeginArea(new Rect(20, 20, 250, 350));
 
         GUILayout.Label("Sushi Showdown Multiplayer");
 
