@@ -71,6 +71,7 @@ namespace SushiDojo.Conveyor
         public int VisibleSlotCount => sideSlotCount * 2 + 1;
         public bool IsRunning { get; private set; }
         public float TravelDistance => (completedSteps + currentMoveProgress) * slotSpacing;
+        public int StepCount => stepCount;
         public float TextureTileLength => textureTileLength;
         public float BeltLength => VisibleSlotCount * slotSpacing + beltExtraLength;
         public bool CanTakeCenter =>
@@ -98,6 +99,7 @@ namespace SushiDojo.Conveyor
 
         // Client-side animation.
         Coroutine remoteMovement;
+        int remoteStep = -1;
 
         void Awake()
         {
@@ -264,10 +266,14 @@ namespace SushiDojo.Conveyor
         /// Updates the client-side conveyor to match the host.
         /// Reuses existing items where possible and animates movement.
         /// </summary>
-        public void ApplyRemoteSlots(IReadOnlyList<int> slots)
+        public void ApplyRemoteSlots(IReadOnlyList<int> slots, int authoritativeStep)
         {
             if (lane == null || slots == null || slots.Count != lane.Length)
                 return;
+
+            bool movedOneStep = remoteStep >= 0 && authoritativeStep == remoteStep + 1;
+            bool sameStep = authoritativeStep == remoteStep;
+            remoteStep = authoritativeStep;
 
             if (remoteMovement != null)
             {
@@ -301,32 +307,23 @@ namespace SushiDojo.Conveyor
 
                 BeltItem item = null;
 
-                // Reuse an item already in this slot.
-                if (previous[i] != null &&
-                    previous[i].Data == data &&
-                    (isTaken || !previous[i].IsTaken))
+                // A moving platter comes from the right, even when this slot
+                // previously held the same ingredient. Claims stay in place.
+                int sourceIndex = movedOneStep ? i + 1 : i;
+                if ((movedOneStep || sameStep) && sourceIndex < previous.Length &&
+                    previous[sourceIndex] != null &&
+                    previous[sourceIndex].Data == data &&
+                    (isTaken || !previous[sourceIndex].IsTaken))
                 {
-                    item = previous[i];
-                    previous[i] = null;
-                }
-
-                // Otherwise, look in the neighboring slot
-                // where a moving item would have come from.
-                if (item == null &&
-                    i + 1 < previous.Length &&
-                    previous[i + 1] != null &&
-                    previous[i + 1].Data == data &&
-                    (isTaken || !previous[i + 1].IsTaken))
-                {
-                    item = previous[i + 1];
-                    previous[i + 1] = null;
+                    item = previous[sourceIndex];
+                    previous[sourceIndex] = null;
                 }
 
                 // Create an item if no existing object matches.
                 if (item == null)
                 {
                     item = Instantiate(itemPrefab, ItemRoot);
-                    item.transform.localPosition = SlotPosition(i);
+                    item.transform.localPosition = SlotPosition(movedOneStep ? i + 1 : i);
                     item.Init(data, OnBeltItemClicked);
                 }
 

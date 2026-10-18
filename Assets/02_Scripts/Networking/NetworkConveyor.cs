@@ -21,6 +21,7 @@ public class NetworkConveyor : NetworkBehaviour
     // Host-controlled slots: -1 = empty, >= 0 = ingredient,
     // <= -2 = claimed ingredient encoded as -index - 2 (plate remains).
     private NetworkList<int> slots = new();
+    private NetworkVariable<int> beltStep = new(0);
     private bool slotsChanged;
     private bool claimPending;
 
@@ -55,6 +56,7 @@ public class NetworkConveyor : NetworkBehaviour
         else
         {
             slots.OnListChanged += OnSlotsChanged;
+            beltStep.OnValueChanged += OnBeltStepChanged;
             slotsChanged = true;
 
             Debug.Log("Client waiting for conveyor updates.");
@@ -106,6 +108,7 @@ public class NetworkConveyor : NetworkBehaviour
 {
     claimPending = false;
     slots.OnListChanged -= OnSlotsChanged;
+    beltStep.OnValueChanged -= OnBeltStepChanged;
 
     if (conveyor != null)
     {
@@ -119,6 +122,11 @@ public class NetworkConveyor : NetworkBehaviour
 }
 
     private void OnSlotsChanged(NetworkListEvent<int> change)
+    {
+        slotsChanged = true;
+    }
+
+    private void OnBeltStepChanged(int previous, int current)
     {
         slotsChanged = true;
     }
@@ -142,6 +150,7 @@ public class NetworkConveyor : NetworkBehaviour
         if (IsServer)
         {
             // Host determines which ingredients occupy each slot.
+            beltStep.Value = conveyor.StepCount;
             for (int i = 0; i < slots.Count; i++)
             {
                 int ingredient =
@@ -163,7 +172,7 @@ public class NetworkConveyor : NetworkBehaviour
             for (int i = 0; i < slots.Count; i++)
                 snapshot[i] = slots[i];
 
-            conveyor.ApplyRemoteSlots(snapshot);
+            conveyor.ApplyRemoteSlots(snapshot, beltStep.Value);
         }
     }
 

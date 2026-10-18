@@ -163,6 +163,7 @@ namespace SushiDojo.Menu
         SpotlightBeam beam;
         Vector2 buttonPanelRest;
         RectTransform currentScreen;
+        MenuOptionsPanel optionsPanel;
         bool switching;
         float titleTimer = -1f;
         bool showTitlesOnClose;
@@ -336,13 +337,17 @@ namespace SushiDojo.Menu
         /// <summary>Back to the main buttons (BACK button or Esc).</summary>
         public void BackToMenu()
         {
+            RectTransform previousScreen = currentScreen;
             if (currentScreen == buttonPanel || !SwitchTo(buttonPanel)) return;
-            LeftLobby?.Invoke();
+            if (optionsPanel == null || previousScreen != optionsPanel.transform) LeftLobby?.Invoke();
         }
 
         public void OpenOptions()
         {
-            Debug.Log($"[{nameof(MainMenu)}] Options menu is not made yet.", this);
+            if (switching || leaving || currentScreen != buttonPanel) return;
+            if (optionsPanel == null)
+                optionsPanel = MenuOptionsPanel.Create(buttonPanel.parent, BackToMenu);
+            SwitchTo((RectTransform)optionsPanel.transform);
         }
 
         public void QuitGame()
