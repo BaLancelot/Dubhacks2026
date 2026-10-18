@@ -67,9 +67,9 @@ namespace SushiDojo.Conveyor
         [Tooltip("Boost for ingredients that appear often across all recipe decks. Usually leave at 0 — active recipes already cover staples.")]
         [SerializeField, Min(0f)] float globalFrequencyBoost = 0f;
         [Tooltip("Base active boost; scaled up for harder recipes (3→0.7x, 4→1x, 5→1.25x, 6→1.55x). Shared needs use max hardness, not sum.")]
-        [SerializeField, Min(0f)] float activeRecipeBoost = 1.0f;
+        [SerializeField, Min(0f)] float activeRecipeBoost = 1.2f;
         [Tooltip("0 = pure recipe/base weighting. Higher = more random (blend toward equal odds per ingredient).")]
-        [SerializeField, Range(0f, 1f)] float diversityMix = 0.4f;
+        [SerializeField, Range(0f, 1f)] float diversityMix = 0.28f;
 
         public event Action OnStepStarted;
         public event Action<IngredientData> OnCenterRevealed;
