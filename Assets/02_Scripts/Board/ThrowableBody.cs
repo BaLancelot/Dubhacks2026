@@ -37,6 +37,8 @@ namespace SushiDojo.Board
         public event Action Released;
 
         public bool IsHeld { get; private set; }
+        /// <summary>Throw speed along the table (units/s) of the last release, before the lift is added.</summary>
+        public float LastThrowSpeed { get; private set; }
         /// <summary>Set false to block picking up (e.g. while fading out).</summary>
         public bool IsGrabbable { get; set; } = true;
 
@@ -83,6 +85,7 @@ namespace SushiDojo.Board
 
             // Spin end over end in the throw direction.
             Vector3 planar = Vector3.ProjectOnPlane(velocity, Up);
+            LastThrowSpeed = planar.magnitude;
             Vector3 fallbackAxis = Frame != null ? Frame.right : Vector3.right;
             Vector3 spinAxis = planar.sqrMagnitude > MinSqrSpeed ? Vector3.Cross(Up, planar).normalized : fallbackAxis;
             body.angularVelocity = spinAxis * Mathf.Min(planar.magnitude * flipSpinPerSpeed, maxFlipSpin);

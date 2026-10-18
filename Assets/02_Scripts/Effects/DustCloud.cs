@@ -54,7 +54,9 @@ namespace SushiDojo.Effects
         [Tooltip("Shader dissolve. 1 = solid, 0 = gone.")]
         [SerializeField] AnimationCurve solidityCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
+        public event Action OnStarted;
         public event Action OnCovered;
+        public event Action OnSparkle;
         public event Action OnFinished;
 
         public bool IsPlaying { get; private set; }
@@ -111,6 +113,7 @@ namespace SushiDojo.Effects
             {
                 hasFiredSparkle = true;
                 finishSparkle.Play();
+                OnSparkle?.Invoke();
             }
 
             if (timer >= TotalDuration)
@@ -150,6 +153,8 @@ namespace SushiDojo.Effects
 
             foreach (DustCloud layer in linkedLayers)
                 if (layer != null && layer != this) layer.Play();
+
+            OnStarted?.Invoke();
         }
 
         /// <summary>
