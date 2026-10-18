@@ -28,11 +28,13 @@ namespace SushiDojo.Sound
         readonly Dictionary<SoundCue, float> lastPlayTimes = new();
         AudioSource[] sfxSources;
         AudioSource bgmSource;
+        float[] sfxBaseVolumes;
         SoundCue currentBgm;
         int nextVoice;
         float bgmFadeTimer;
         float bgmStartVolume;
         float bgmTargetVolume;
+        float bgmPlaybackVolume;
 
         void Awake()
         {
@@ -45,6 +47,7 @@ namespace SushiDojo.Sound
             Instance = this;
 
             sfxSources = new AudioSource[sfxVoices];
+            sfxBaseVolumes = new float[sfxVoices];
             for (int i = 0; i < sfxVoices; i++) sfxSources[i] = CreateSource(false);
             bgmSource = CreateSource(true);
         }
@@ -61,13 +64,22 @@ namespace SushiDojo.Sound
 
         void Update()
         {
+            for (int i = 0; i < sfxSources.Length; i++)
+            {
+                sfxSources[i].mute = !GameOptions.SfxEnabled;
+                sfxSources[i].volume = sfxBaseVolumes[i] * GameOptions.SfxVolume;
+            }
             LoopBgmPastTrim();
 
+            // Apply the preference after the fade, so changing it also affects
+            // music already playing without stopping its beat clock.
+            bgmSource.volume = bgmPlaybackVolume * GameOptions.MusicVolume;
             if (bgmFadeTimer <= 0f) return;
 
             bgmFadeTimer = Mathf.Max(bgmFadeTimer - Time.unscaledDeltaTime, 0f);
             float progress = bgmFadeDuration > 0f ? 1f - bgmFadeTimer / bgmFadeDuration : 1f;
-            bgmSource.volume = Mathf.Lerp(bgmStartVolume, bgmTargetVolume, progress);
+            bgmPlaybackVolume = Mathf.Lerp(bgmStartVolume, bgmTargetVolume, progress);
+            bgmSource.volume = bgmPlaybackVolume * GameOptions.MusicVolume;
             if (bgmFadeTimer <= 0f && bgmTargetVolume <= 0f) bgmSource.Stop();
         }
 
@@ -113,6 +125,7 @@ namespace SushiDojo.Sound
 
         void PlaySfx(SoundCue cue, float volumeScale)
         {
+            if (!GameOptions.SfxEnabled || GameOptions.SfxVolume <= 0f) return;
             float now = Time.unscaledTime;
             if (lastPlayTimes.TryGetValue(cue, out float last) && now - last < cue.Cooldown) return;
 
@@ -122,7 +135,10 @@ namespace SushiDojo.Sound
 
             AudioSource source = NextVoice();
             source.clip = clip;
-            source.volume = cue.Volume * Mathf.Clamp01(volumeScale) * sfxVolume * masterVolume;
+            float baseVolume = cue.Volume * Mathf.Clamp01(volumeScale) * sfxVolume * masterVolume;
+            sfxBaseVolumes[System.Array.IndexOf(sfxSources, source)] = baseVolume;
+            source.mute = false;
+            source.volume = baseVolume * GameOptions.SfxVolume;
             source.pitch = cue.PickPitch();
             source.time = Mathf.Clamp(cue.StartTime, 0f, Mathf.Max(clip.length - Time.fixedDeltaTime, 0f));
             source.Play();
@@ -138,6 +154,7 @@ namespace SushiDojo.Sound
             currentBgm = cue;
             bgmSource.clip = clip;
             bgmSource.pitch = 1f;
+            bgmPlaybackVolume = 0f;
             bgmSource.volume = 0f;
             bgmSource.time = Mathf.Clamp(cue.StartTime, 0f, clip.length);
             bgmSource.Play();
@@ -147,7 +164,7 @@ namespace SushiDojo.Sound
         void FadeBgmTo(float volume)
         {
             if (volume <= 0f) currentBgm = null;
-            bgmStartVolume = bgmSource.volume;
+            bgmStartVolume = bgmPlaybackVolume;
             bgmTargetVolume = volume;
             bgmFadeTimer = Mathf.Max(bgmFadeDuration, Mathf.Epsilon);
         }
